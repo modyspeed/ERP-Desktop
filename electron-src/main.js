@@ -2,10 +2,6 @@ const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-console.log('app:', typeof app);
-console.log('app keys:', app ? Object.keys(app) : 'N/A');
-console.log('BrowserWindow:', typeof BrowserWindow);
-
 const { initDatabase, closeDatabase } = require('./database/db');
 const { registerAllIPC } = require('./ipc/index');
 const logger = require('./utils/logger');
