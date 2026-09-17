@@ -1,0 +1,23 @@
+appId: com.erp.desktop
+productName: "ERP Desktop System"
+directories:
+  output: release
+  buildResources: build
+files:
+  - "dist/**/*"
+  - "electron-src/**/*"
+  - "package.json"
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: "ERP Desktop"
