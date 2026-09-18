@@ -5,8 +5,6 @@ import { useToast } from "../../../context/ToastContext";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import Table from "../../../components/ui/Table";
-import Badge from "../../../components/ui/Badge";
-import ConfirmDialog from "../../../components/ui/ConfirmDialog";
 
 const BackupPage = () => {
   const { t } = useTranslation();
