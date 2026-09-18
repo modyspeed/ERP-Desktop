@@ -9,7 +9,7 @@ import SettingsPage from '../modules/settings/pages/SettingsPage';
 import UsersPage from '../modules/users/pages/UsersPage';
 import RolesPermissionsPage from '../modules/users/pages/RolesPermissionsPage';
 import AuditLogPage from '../modules/users/pages/AuditLogPage';
-import PlaceholderModule from '../components/ui/PlaceholderModule';
+import ReportsPage from '../modules/reports/pages/ReportsPage';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import HrPage from '../modules/hr/pages/HrPage';
 import AttendancePage from '../modules/hr/pages/AttendancePage';
@@ -119,17 +119,7 @@ export const AppRoutes = () => {
         <Route path="/hr/attendance" element={<AttendancePage />} />
         <Route path="/hr/leaves" element={<LeavesPage />} />
         <Route path="/hr/payrolls" element={<PayrollsPage />} />
-        <Route
-          path="/reports"
-          element={
-            <PlaceholderModule
-              title="التقارير الشاملة والتصدير"
-              phase="المرحلة الخامسة"
-              description="تقارير تحليلية وتفصيلية قابلة للطباعة والتصدير بصيغ Excel / PDF / CSV"
-              features={['تقرير الأرباح والخسائر', 'تقرير حركة الصنف', 'تقارير ضريبة القيمة المضافة', 'تصدير Excel/PDF']}
-            />
-          }
-        />
+        <Route path="/reports" element={<ReportsPage />} />
       </Route>
 
       {/* Catch-all redirect */}

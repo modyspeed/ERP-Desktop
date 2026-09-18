@@ -112,6 +112,14 @@ contextBridge.exposeInMainWorld('api', {
     update: (data) => ipcRenderer.invoke('taxes:update', data),
   },
 
+  // Reports
+  reports: {
+    profitLoss: (params) => ipcRenderer.invoke('reports:profit-loss', params),
+    inventoryMovement: (params) => ipcRenderer.invoke('reports:inventory-movement', params),
+    taxReport: (params) => ipcRenderer.invoke('reports:tax-report', params),
+    salesSummary: (params) => ipcRenderer.invoke('reports:sales-summary', params),
+  },
+
   // HR
   hr: {
     employees: (params) => ipcRenderer.invoke('hr:employees-search', params),
