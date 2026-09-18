@@ -76,7 +76,7 @@ const StockTransferPage = () => {
 
   const columns = [
     { key: "name", header: "الصنف", render: (value) => <strong>{value}</strong> },
-    { key: "from_warehouse_name', header: 'من مستودع', render: (value, row) => warehouses.find(w => String(w.id) === String(row.from_warehouse_id))?.name || value },
+    { key: "from_warehouse_name", header: "من مستودع", render: (value, row) => warehouses.find(w => String(w.id) === String(row.from_warehouse_id))?.name || value },
     { key: 'to_warehouse_name', header: 'إلى مستودع', render: (value, row) => warehouses.find(w => String(w.id) === String(row.to_warehouse_id))?.name || value },
     { key: 'qty', header: 'الكمية', align: 'center' },
   ];

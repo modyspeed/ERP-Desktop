@@ -92,7 +92,7 @@ const HrPayrollsPage = () => {
           </div>
           <div style={{ padding: "12px 16px", backgroundColor: "var(--border-subtle)", borderRadius: 10, fontSize: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-muted)" }}>الراتب الأساسي:</span><strong>{employees.find(e => e.id === Number(generateForm.employee_id))?.salary_base || 0}</strong></div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-muted)" }}>صافي الراتب:</span><strong style={{ color: "var(--primary-color)" }}>{(Number(generateForm.employee_id ? employees.find(e => e.id === Number(generateForm.employee_id))?.salary_base || 0) + Number(generateForm.allowances || 0) - Number(generateForm.deductions || 0)).toFixed(2)}</strong></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-muted)" }}>صافي الراتب:</span><strong style={{ color: "var(--primary-color)" }}>{(Number(employees.find(e => e.id === Number(generateForm.employee_id))?.salary_base || 0) + Number(generateForm.allowances || 0) - Number(generateForm.deductions || 0)).toFixed(2)}</strong></div>
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}><Button variant="secondary" onClick={() => setModalOpen(false)}>إلغاء</Button><Button type="submit" icon={FileText} loading={saving}>إنشاء وربط بقيد محاسبي</Button></div>
         </form>

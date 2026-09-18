@@ -54,7 +54,7 @@ const QuotationsPage = () => {
     setModalOpen(true);
     const res = await window.api?.quotations?.get(quotation.id);
     if (res?.success) {
-      setCart((res.data.items || []).map((item) => ({ product_id: String(item.product_id), name: item.product_name || "", qty: item.qty, unit_price: item.unit_price, discount: item.discount || 0, tax: item.tax || 0 }));
+      setCart((res.data.items || []).map((item) => ({ product_id: String(item.product_id), name: item.product_name || "", qty: item.qty, unit_price: item.unit_price, discount: item.discount || 0, tax: item.tax || 0 })));
     }
   };
 
