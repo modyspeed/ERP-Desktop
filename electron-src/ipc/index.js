@@ -12,6 +12,7 @@ const registerAccountsIPC = require('./accounts.ipc');
 const registerCategoriesIPC = require('./categories.ipc');
 const registerHrIPC = require('./hr.ipc');
 const registerQuotationIPC = require('./quotation.ipc');
+const registerPurchaseOrderIPC = require('./purchase_order.ipc');
 const registerReturnIPC = require('./return.ipc');
 const registerReportIPC = require('./report.ipc');
 const registerTaxesIPC = require('./taxes.ipc');
@@ -34,6 +35,7 @@ function registerAllIPC(ipcMain) {
   registerTaxesIPC(ipcMain);
   registerHrIPC(ipcMain);
   registerQuotationIPC(ipcMain);
+  registerPurchaseOrderIPC(ipcMain);
   registerReturnIPC(ipcMain);
   registerReportIPC(ipcMain);
 

@@ -23,6 +23,7 @@ import PosPage from '../modules/pos/pages/PosPage';
 import SuppliersPage from '../modules/purchases/pages/SuppliersPage';
 import PurchaseInvoicesPage from '../modules/purchases/pages/PurchaseInvoicesPage';
 import PurchaseReturnsPage from '../modules/purchases/pages/PurchaseReturnsPage';
+import PurchaseOrdersPage from '../modules/purchases/pages/PurchaseOrdersPage';
 import AccountsPage from '../modules/accounting/pages/AccountsPage';
 import QuotationsPage from '../modules/sales/pages/QuotationsPage';
 import SalesReturnsPage from '../modules/sales/pages/SalesReturnsPage';
@@ -117,6 +118,7 @@ export const AppRoutes = () => {
         <Route path="/pos" element={<PosPage />} />
         <Route path="/purchases" element={<PurchaseInvoicesPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
+        <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
         <Route path="/purchase-returns" element={<PurchaseReturnsPage />} />
         <Route path="/quotations" element={<QuotationsPage />} />
         <Route path="/sales-returns" element={<SalesReturnsPage />} />

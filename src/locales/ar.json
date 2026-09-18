@@ -245,6 +245,25 @@
     "addItem": "إضافة صنف",
     "invoice": "الفاتورة"
   },
+  "purchaseOrders": {
+    "title": "أوامر الشراء",
+    "addPO": "أمر شراء جديد",
+    "poNumber": "رقم الأمر",
+    "supplier": "المورد",
+    "date": "التاريخ",
+    "total": "الإجمالي",
+    "status": "الحالة",
+    "pending": "معلق",
+    "invoiced": "مُفوترة",
+    "items": "الأصناف",
+    "addItem": "إضافة صنف",
+    "convertToInvoice": "تحويل لفاتورة",
+    "invoiceCreated": "تم إنشاء الفاتورة بنجاح",
+    "confirmConvert": "هل أنت متأكد من تحويل الأمر لفاتورة؟",
+    "quantity": "الكمية",
+    "unitCost": "سعر التكلفة",
+    "notes": "ملاحظات"
+  },
   "quotations": {
     "title": "عروض الأسعار",
     "addQuotation": "عرض أسعار جديد",

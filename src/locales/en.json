@@ -245,6 +245,25 @@
     "addItem": "Add Item",
     "invoice": "Invoice"
   },
+  "purchaseOrders": {
+    "title": "Purchase Orders",
+    "addPO": "New Purchase Order",
+    "poNumber": "PO Number",
+    "supplier": "Supplier",
+    "date": "Date",
+    "total": "Total",
+    "status": "Status",
+    "pending": "Pending",
+    "invoiced": "Invoiced",
+    "items": "Items",
+    "addItem": "Add Item",
+    "convertToInvoice": "Convert to Invoice",
+    "invoiceCreated": "Invoice created successfully",
+    "confirmConvert": "Are you sure you want to convert this PO to an invoice?",
+    "quantity": "Quantity",
+    "unitCost": "Unit Cost",
+    "notes": "Notes"
+  },
   "quotations": {
     "title": "Quotations",
     "addQuotation": "New Quotation",

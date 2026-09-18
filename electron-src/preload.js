@@ -112,6 +112,14 @@ contextBridge.exposeInMainWorld('api', {
     update: (data) => ipcRenderer.invoke('taxes:update', data),
   },
 
+  purchaseOrders: {
+    search: (params) => ipcRenderer.invoke('purchase-orders:search', params),
+    options: (branchId) => ipcRenderer.invoke('purchase-orders:options', branchId),
+    save: (data) => ipcRenderer.invoke('purchase-orders:save', data),
+    get: (id) => ipcRenderer.invoke('purchase-orders:get', id),
+    convertToInvoice: (data) => ipcRenderer.invoke('purchase-orders:convert-to-invoice', data),
+  },
+
   returns: {
     salesSearch: (params) => ipcRenderer.invoke('returns:sales-search', params),
     salesGet: (id) => ipcRenderer.invoke('returns:sales-get', id),
