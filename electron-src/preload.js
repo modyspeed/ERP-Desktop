@@ -112,6 +112,13 @@ contextBridge.exposeInMainWorld('api', {
     update: (data) => ipcRenderer.invoke('taxes:update', data),
   },
 
+  warehouses: {
+    search: (params) => ipcRenderer.invoke('warehouses:search', params),
+    stock: (warehouseId) => ipcRenderer.invoke('warehouses:stock', warehouseId),
+    save: (data) => ipcRenderer.invoke('warehouses:save', data),
+    transfer: (data) => ipcRenderer.invoke('warehouses:transfer', data),
+  },
+
   purchaseOrders: {
     search: (params) => ipcRenderer.invoke('purchase-orders:search', params),
     options: (branchId) => ipcRenderer.invoke('purchase-orders:options', branchId),

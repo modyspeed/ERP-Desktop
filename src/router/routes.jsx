@@ -17,6 +17,8 @@ import LeavesPage from '../modules/hr/pages/LeavesPage';
 import PayrollsPage from '../modules/hr/pages/PayrollsPage';
 import ProductsPage from '../modules/inventory/pages/ProductsPage';
 import CategoriesPage from '../modules/inventory/pages/CategoriesPage';
+import WarehousesPage from '../modules/inventory/pages/WarehousesPage';
+import StockTransferPage from '../modules/inventory/pages/StockTransferPage';
 import CustomersPage from '../modules/sales/pages/CustomersPage';
 import SalesPage from '../modules/sales/pages/SalesPage';
 import PosPage from '../modules/pos/pages/PosPage';
@@ -111,6 +113,8 @@ export const AppRoutes = () => {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/inventory" element={<ProductsPage />} />
         <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/warehouses" element={<WarehousesPage />} />
+        <Route path="/stock-transfer" element={<StockTransferPage />} />
 
         {/* Future Phase Placeholders */}
         <Route path="/sales" element={<SalesPage />} />

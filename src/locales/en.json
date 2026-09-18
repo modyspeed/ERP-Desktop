@@ -49,7 +49,9 @@
     "settings": "Settings & Branding",
     "auditLogs": "Audit Logs",
     "roles": "Roles Matrix",
-    "logout": "Sign Out"
+    "logout": "Sign Out",
+    "warehouses": "Warehouses",
+    "stockTransfer": "Stock Transfer"
   },
   "auth": {
     "loginTitle": "Sign In",
