@@ -11,6 +11,10 @@ import RolesPermissionsPage from '../modules/users/pages/RolesPermissionsPage';
 import AuditLogPage from '../modules/users/pages/AuditLogPage';
 import PlaceholderModule from '../components/ui/PlaceholderModule';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import HrPage from '../modules/hr/pages/HrPage';
+import AttendancePage from '../modules/hr/pages/AttendancePage';
+import LeavesPage from '../modules/hr/pages/LeavesPage';
+import PayrollsPage from '../modules/hr/pages/PayrollsPage';
 import ProductsPage from '../modules/inventory/pages/ProductsPage';
 import CategoriesPage from '../modules/inventory/pages/CategoriesPage';
 import CustomersPage from '../modules/sales/pages/CustomersPage';
@@ -111,17 +115,10 @@ export const AppRoutes = () => {
         <Route path="/purchases" element={<PurchaseInvoicesPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
         <Route path="/accounting" element={<AccountsPage />} />
-        <Route
-          path="/hr"
-          element={
-            <PlaceholderModule
-              title="وحدة الموارد البشرية (HR)"
-              phase="المرحلة الرابعة"
-              description="بيانات الموظفين، سجلات الحضور والانصراف، الإجازات، ومسيرات الرواتب"
-              features={['ملفات الموظفين', 'حساب الرواتب التلقائي', 'ربط الرواتب بقيود محاسبية', 'إدارة الإجازات']}
-            />
-          }
-        />
+        <Route path="/hr" element={<HrPage />} />
+        <Route path="/hr/attendance" element={<AttendancePage />} />
+        <Route path="/hr/leaves" element={<LeavesPage />} />
+        <Route path="/hr/payrolls" element={<PayrollsPage />} />
         <Route
           path="/reports"
           element={

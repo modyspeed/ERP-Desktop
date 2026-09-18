@@ -57,7 +57,7 @@ const MainLayout = () => {
     { key: 'inventory', to: '/inventory', icon: Package, label: t('nav.inventory'), module: 'inventory' },
     { key: 'purchases', to: '/purchases', icon: ShoppingBag, label: t('nav.purchases'), module: 'purchases', badge: 'قريباً' },
     { key: 'accounting', to: '/accounting', icon: Landmark, label: t('nav.accounting'), module: 'accounting', badge: 'قريباً' },
-    { key: 'hr', to: '/hr', icon: UsersIcon, label: t('nav.hr'), module: 'hr', badge: 'قريباً' },
+    { key: 'hr', to: '/hr', icon: UsersIcon, label: t('nav.hr'), module: 'hr' },
     { key: 'reports', to: '/reports', icon: BarChart3, label: t('nav.reports'), module: 'reports', badge: 'قريباً' },
     { key: 'users', to: '/users', icon: UserCheck, label: t('nav.users'), module: 'users' },
     { key: 'roles', to: '/roles', icon: ShieldCheck, label: t('nav.roles'), module: 'roles' },

@@ -112,6 +112,21 @@ contextBridge.exposeInMainWorld('api', {
     update: (data) => ipcRenderer.invoke('taxes:update', data),
   },
 
+  // HR
+  hr: {
+    employees: (params) => ipcRenderer.invoke('hr:employees-search', params),
+    employeeOptions: (branchId) => ipcRenderer.invoke('hr:employees-options', branchId),
+    employeeSave: (data) => ipcRenderer.invoke('hr:employee-save', data),
+    employeeDelete: (id) => ipcRenderer.invoke('hr:employee-delete', id),
+    attendance: (params) => ipcRenderer.invoke('hr:attendance-search', params),
+    attendanceSummary: (params) => ipcRenderer.invoke('hr:attendance-summary', params),
+    attendanceUpsert: (data) => ipcRenderer.invoke('hr:attendance-upsert', data),
+    leaves: (params) => ipcRenderer.invoke('hr:leaves-search', params),
+    leaveSave: (data) => ipcRenderer.invoke('hr:leave-save', data),
+    payrolls: (params) => ipcRenderer.invoke('hr:payrolls-search', params),
+    payrollGenerate: (data) => ipcRenderer.invoke('hr:payroll-generate', data),
+  },
+
   // Hardware
   hardware: {
     printReceipt: (params) => ipcRenderer.invoke('hardware:print-receipt', params),
