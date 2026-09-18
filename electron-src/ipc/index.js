@@ -11,6 +11,7 @@ const registerPurchasesIPC = require('./purchases.ipc');
 const registerAccountsIPC = require('./accounts.ipc');
 const registerCategoriesIPC = require('./categories.ipc');
 const registerHrIPC = require('./hr.ipc');
+const registerQuotationIPC = require('./quotation.ipc');
 const registerReportIPC = require('./report.ipc');
 const registerTaxesIPC = require('./taxes.ipc');
 const printerAdapter = require('../hardware/printer.adapter');
@@ -31,6 +32,7 @@ function registerAllIPC(ipcMain) {
   registerCategoriesIPC(ipcMain);
   registerTaxesIPC(ipcMain);
   registerHrIPC(ipcMain);
+  registerQuotationIPC(ipcMain);
   registerReportIPC(ipcMain);
 
   // Hardware IPC

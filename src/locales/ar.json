@@ -228,5 +228,27 @@
     "adjustment": "تعديل",
     "grossSales": "إجمالي المبيعات",
     "receivable": "المستحقات"
+  },
+  "quotations": {
+    "title": "عروض الأسعار",
+    "addQuotation": "عرض أسعار جديد",
+    "editQuotation": "تعديل العرض",
+    "quoteNumber": "رقم العرض",
+    "customer": "العميل",
+    "quoteDate": "تاريخ العرض",
+    "expiryDate": "تاريخ الانتهاء",
+    "total": "الإجمالي",
+    "status": "الحالة",
+    "draft": "مسودة",
+    "approved": "موافق",
+    "converted": "محول",
+    "items": "الأصناف",
+    "addItem": "إضافة صنف",
+    "convertToInvoice": "تحويل لفاتورة",
+    "invoiceCreated": "تم إنشاء الفاتورة بنجاح",
+    "confirmConvert": "هل أنت متأكد من تحويل العرض؟",
+    "quantity": "الكمية",
+    "unitPrice": "سعر الوحدة",
+    "notes": "ملاحظات"
   }
 }

@@ -112,6 +112,14 @@ contextBridge.exposeInMainWorld('api', {
     update: (data) => ipcRenderer.invoke('taxes:update', data),
   },
 
+  quotations: {
+    search: (params) => ipcRenderer.invoke('quotations:search', params),
+    options: (branchId) => ipcRenderer.invoke('quotations:options', branchId),
+    save: (data) => ipcRenderer.invoke('quotations:save', data),
+    get: (id) => ipcRenderer.invoke('quotations:get', id),
+    convertToInvoice: (data) => ipcRenderer.invoke('quotations:convert-to-invoice', data),
+  },
+
   // Reports
   reports: {
     profitLoss: (params) => ipcRenderer.invoke('reports:profit-loss', params),

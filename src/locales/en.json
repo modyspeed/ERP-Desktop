@@ -228,5 +228,27 @@
     "adjustment": "Adjustment",
     "grossSales": "Gross Sales",
     "receivable": "Receivable"
+  },
+  "quotations": {
+    "title": "Quotations",
+    "addQuotation": "New Quotation",
+    "editQuotation": "Edit Quotation",
+    "quoteNumber": "Quote Number",
+    "customer": "Customer",
+    "quoteDate": "Quote Date",
+    "expiryDate": "Expiry Date",
+    "total": "Total",
+    "status": "Status",
+    "draft": "Draft",
+    "approved": "Approved",
+    "converted": "Converted",
+    "items": "Items",
+    "addItem": "Add Item",
+    "convertToInvoice": "Convert to Invoice",
+    "invoiceCreated": "Invoice created successfully",
+    "confirmConvert": "Are you sure you want to convert this quotation?",
+    "quantity": "Quantity",
+    "unitPrice": "Unit Price",
+    "notes": "Notes"
   }
 }
