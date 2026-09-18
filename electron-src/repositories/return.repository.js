@@ -107,12 +107,6 @@ class ReturnRepository extends BaseRepository {
       return { return_data: db.prepare('SELECT * FROM purchase_returns WHERE id = ?').get(result.lastInsertRowid), items: this.getPurchaseReturnItems(result.lastInsertRowid) };
     })();
   }
-      }
-
-      db.prepare('UPDATE purchase_returns SET total_amount = ? WHERE id = ?').run(totalAmount, result.lastInsertRowid);
-      return { return_data: db.prepare('SELECT * FROM purchase_returns WHERE id = ?').get(result.lastInsertRowid), items: this.getPurchaseReturnItems(result.lastInsertRowid) };
-    })();
-  }
 }
 
 module.exports = new ReturnRepository();
