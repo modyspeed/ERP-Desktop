@@ -229,6 +229,22 @@
     "grossSales": "Gross Sales",
     "receivable": "Receivable"
   },
+  "returns": {
+    "title": "Returns",
+    "salesReturns": "Sales Returns",
+    "purchaseReturns": "Purchase Returns",
+    "addReturn": "Add Return",
+    "returnNumber": "Return Number",
+    "originalInvoice": "Original Invoice",
+    "customer": "Customer",
+    "supplier": "Supplier",
+    "date": "Date",
+    "total": "Total",
+    "reason": "Reason",
+    "items": "Items",
+    "addItem": "Add Item",
+    "invoice": "Invoice"
+  },
   "quotations": {
     "title": "Quotations",
     "addQuotation": "New Quotation",

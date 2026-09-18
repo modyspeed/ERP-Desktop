@@ -392,6 +392,16 @@ CREATE TABLE IF NOT EXISTS purchase_returns (
   FOREIGN KEY (invoice_id) REFERENCES purchase_invoices(id)
 );
 
+CREATE TABLE IF NOT EXISTS purchase_return_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  return_id INTEGER NOT NULL,
+  product_id INTEGER NOT NULL,
+  qty REAL NOT NULL,
+  unit_cost REAL NOT NULL,
+  FOREIGN KEY (return_id) REFERENCES purchase_returns(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
 -- 12.7 POS
 CREATE TABLE IF NOT EXISTS pos_sessions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

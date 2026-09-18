@@ -229,6 +229,22 @@
     "grossSales": "إجمالي المبيعات",
     "receivable": "المستحقات"
   },
+  "returns": {
+    "title": "المرتجعات",
+    "salesReturns": "مرتجعات البيع",
+    "purchaseReturns": "مرتجعات الشراء",
+    "addReturn": "إضافة مرتجع",
+    "returnNumber": "رقم المرتجع",
+    "originalInvoice": "الفاتورة الأصلية",
+    "customer": "العميل",
+    "supplier": "المورد",
+    "date": "التاريخ",
+    "total": "الإجمالي",
+    "reason": "السبب",
+    "items": "الأصناف",
+    "addItem": "إضافة صنف",
+    "invoice": "الفاتورة"
+  },
   "quotations": {
     "title": "عروض الأسعار",
     "addQuotation": "عرض أسعار جديد",

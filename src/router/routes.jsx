@@ -22,8 +22,10 @@ import SalesPage from '../modules/sales/pages/SalesPage';
 import PosPage from '../modules/pos/pages/PosPage';
 import SuppliersPage from '../modules/purchases/pages/SuppliersPage';
 import PurchaseInvoicesPage from '../modules/purchases/pages/PurchaseInvoicesPage';
+import PurchaseReturnsPage from '../modules/purchases/pages/PurchaseReturnsPage';
 import AccountsPage from '../modules/accounting/pages/AccountsPage';
 import QuotationsPage from '../modules/sales/pages/QuotationsPage';
+import SalesReturnsPage from '../modules/sales/pages/SalesReturnsPage';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -115,7 +117,9 @@ export const AppRoutes = () => {
         <Route path="/pos" element={<PosPage />} />
         <Route path="/purchases" element={<PurchaseInvoicesPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
+        <Route path="/purchase-returns" element={<PurchaseReturnsPage />} />
         <Route path="/quotations" element={<QuotationsPage />} />
+        <Route path="/sales-returns" element={<SalesReturnsPage />} />
         <Route path="/accounting" element={<AccountsPage />} />
         <Route path="/hr" element={<HrPage />} />
         <Route path="/hr/attendance" element={<AttendancePage />} />
