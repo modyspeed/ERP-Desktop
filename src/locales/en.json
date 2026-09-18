@@ -287,5 +287,22 @@
     "quantity": "Quantity",
     "unitPrice": "Unit Price",
     "notes": "Notes"
+  },
+  "backup": {
+    "title": "Backup & Restore",
+    "subtitle": "Create backups and restore data",
+    "createBackup": "Create Backup",
+    "empty": "No backups available",
+    "fileName": "File Name",
+    "size": "Size",
+    "date": "Backup Date",
+    "restore": "Restore",
+    "delete": "Delete",
+    "restoring": "Restoring...",
+    "deleting": "Deleting...",
+    "backupCreated": "Backup created successfully",
+    "backupDeleted": "Backup deleted successfully",
+    "restoreCompleted": "Restore completed successfully",
+    "confirmRestore": "Are you sure you want to restore from this backup? Current data will be replaced."
   }
 }

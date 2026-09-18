@@ -29,6 +29,7 @@ import PurchaseOrdersPage from '../modules/purchases/pages/PurchaseOrdersPage';
 import AccountsPage from '../modules/accounting/pages/AccountsPage';
 import QuotationsPage from '../modules/sales/pages/QuotationsPage';
 import SalesReturnsPage from '../modules/sales/pages/SalesReturnsPage';
+import BackupPage from '../modules/settings/pages/BackupPage';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -132,6 +133,7 @@ export const AppRoutes = () => {
         <Route path="/hr/leaves" element={<LeavesPage />} />
         <Route path="/hr/payrolls" element={<PayrollsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/backup" element={<BackupPage />} />
       </Route>
 
       {/* Catch-all redirect */}

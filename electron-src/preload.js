@@ -112,6 +112,13 @@ contextBridge.exposeInMainWorld('api', {
     update: (data) => ipcRenderer.invoke('taxes:update', data),
   },
 
+  backup: {
+    list: () => ipcRenderer.invoke('backup:list'),
+    create: () => ipcRenderer.invoke('backup:create'),
+    restore: (filePath) => ipcRenderer.invoke('backup:restore', filePath),
+    delete: (filePath) => ipcRenderer.invoke('backup:delete', filePath),
+  },
+
   warehouses: {
     search: (params) => ipcRenderer.invoke('warehouses:search', params),
     stock: (warehouseId) => ipcRenderer.invoke('warehouses:stock', warehouseId),
