@@ -28,7 +28,7 @@ class CustomerRepository extends BaseRepository {
     };
   }
 
-  saveCustomer({ id, branch_id = 1, ...data }) {
+  saveCustomer({ id, branch_id = 1, _userId, currentUserId, ...data }) {
     const customer = {
       ...data,
       branch_id,

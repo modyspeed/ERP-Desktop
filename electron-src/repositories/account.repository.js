@@ -11,7 +11,7 @@ class AccountRepository extends BaseRepository {
     return this.db.prepare(sql).all(...params);
   }
 
-  saveAccount({ id, ...data }) {
+  saveAccount({ id, _userId, currentUserId, ...data }) {
     const account = { ...data, parent_id: data.parent_id || null, is_active: data.is_active === undefined ? 1 : Number(data.is_active) };
     if (!account.code || !account.name || !account.account_type) throw new Error('رمز الحساب واسمه ونوعه مطلوبة');
     return id ? this.update(id, account) : this.create(account);

@@ -44,7 +44,7 @@ class ProductRepository extends BaseRepository {
       .all(branchId);
   }
 
-  saveProduct({ id, branch_id = 1, ...data }) {
+  saveProduct({ id, branch_id = 1, _userId, currentUserId, ...data }) {
     const product = {
       ...data,
       branch_id,

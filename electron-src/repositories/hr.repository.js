@@ -27,7 +27,7 @@ class HrRepository extends BaseRepository {
     };
   }
 
-  saveEmployee({ id, branch_id = 1, ...data }) {
+  saveEmployee({ id, branch_id = 1, currentUserId, _userId, ...data }) {
     const employee = {
       ...data,
       branch_id,

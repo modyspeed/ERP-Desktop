@@ -17,7 +17,7 @@ class SupplierRepository extends BaseRepository {
     return { items: this.db.prepare(sql).all(...params), total, page, limit, totalPages: Math.ceil(total / limit) || 1 };
   }
 
-  saveSupplier({ id, branch_id = 1, ...data }) {
+  saveSupplier({ id, branch_id = 1, _userId, currentUserId, ...data }) {
     const supplier = { ...data, branch_id, opening_balance: Number(data.opening_balance || 0) };
     return id ? this.update(id, supplier) : this.create(supplier);
   }

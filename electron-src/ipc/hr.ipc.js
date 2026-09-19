@@ -15,12 +15,13 @@ function registerHrIpc(ipcMain) {
 
   ipcMain.handle('hr:employee-save', async (event, data) => {
     const userId = data?._userId || null;
-    if (!userId) return { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' };
+    if (!userId) return { success: false, error: 'غير مصرح لك', code: 'UNAUTHORIZED' };
     if (!permissionMiddleware.hasPermission(userId, 'hr', 'create') && !permissionMiddleware.hasPermission(userId, 'hr', 'edit')) {
       return { success: false, error: 'Forbidden', code: 'FORBIDDEN' };
     }
     try {
-      const result = hrService.saveEmployee({ ...data, currentUserId: userId });
+      const { _userId, ...employeeData } = data || {};
+      const result = hrService.saveEmployee({ ...employeeData, currentUserId: userId });
       return { success: true, data: result, message: 'Employee saved' };
     } catch (err) { return { success: false, error: err.message }; }
   });
@@ -55,7 +56,8 @@ function registerHrIpc(ipcMain) {
       return { success: false, error: 'Forbidden', code: 'FORBIDDEN' };
     }
     try {
-      const result = hrService.upsertAttendance({ ...data, currentUserId: userId });
+      const { _userId, ...attendanceData } = data || {};
+      const result = hrService.upsertAttendance({ ...attendanceData, currentUserId: userId });
       return { success: true, data: result, message: 'Attendance saved' };
     } catch (err) { return { success: false, error: err.message }; }
   });
@@ -72,7 +74,8 @@ function registerHrIpc(ipcMain) {
       return { success: false, error: 'Forbidden', code: 'FORBIDDEN' };
     }
     try {
-      const result = hrService.saveLeave({ ...data, currentUserId: userId });
+      const { _userId, ...leaveData } = data || {};
+      const result = hrService.saveLeave({ ...leaveData, currentUserId: userId });
       return { success: true, data: result, message: 'Leave saved' };
     } catch (err) { return { success: false, error: err.message }; }
   });
@@ -89,7 +92,8 @@ function registerHrIpc(ipcMain) {
       return { success: false, error: 'Forbidden', code: 'FORBIDDEN' };
     }
     try {
-      const result = hrService.generatePayroll({ ...data, currentUserId: userId });
+      const { _userId, ...payrollData } = data || {};
+      const result = hrService.generatePayroll({ ...payrollData, currentUserId: userId });
       return { success: true, data: result, message: 'Payroll generated' };
     } catch (err) { return { success: false, error: err.message }; }
   });

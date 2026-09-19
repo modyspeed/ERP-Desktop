@@ -58,6 +58,10 @@ function initDatabase() {
     if (!settingsColumns.includes('purchase_tax_percentage')) {
       dbInstance.exec("ALTER TABLE company_settings ADD COLUMN purchase_tax_percentage REAL DEFAULT 15.0");
     }
+    const quotationColumns = dbInstance.prepare('PRAGMA table_info(quotations)').all().map((column) => column.name);
+    if (!quotationColumns.includes('notes')) dbInstance.exec('ALTER TABLE quotations ADD COLUMN notes TEXT');
+    const purchaseOrderColumns = dbInstance.prepare('PRAGMA table_info(purchase_orders)').all().map((column) => column.name);
+    if (!purchaseOrderColumns.includes('notes')) dbInstance.exec('ALTER TABLE purchase_orders ADD COLUMN notes TEXT');
     const salesInvoiceColumns = dbInstance.prepare('PRAGMA table_info(sales_invoices)').all().map((column) => column.name);
     if (!salesInvoiceColumns.includes('tax_details')) dbInstance.exec('ALTER TABLE sales_invoices ADD COLUMN tax_details TEXT');
     const purchaseInvoiceColumns = dbInstance.prepare('PRAGMA table_info(purchase_invoices)').all().map((column) => column.name);
