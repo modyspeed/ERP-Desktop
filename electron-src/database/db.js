@@ -62,9 +62,6 @@ function initDatabase() {
     if (!settingsColumns.includes('country_code')) {
       dbInstance.exec("ALTER TABLE company_settings ADD COLUMN country_code TEXT DEFAULT 'SA'");
     }
-    if (!settingsColumns.includes('secondary_currency_code')) {
-      dbInstance.exec("ALTER TABLE company_settings ADD COLUMN secondary_currency_code TEXT");
-    }
     if (!settingsColumns.includes('exchange_rate')) {
       dbInstance.exec("ALTER TABLE company_settings ADD COLUMN exchange_rate REAL DEFAULT 1.0");
     }

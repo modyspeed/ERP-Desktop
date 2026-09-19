@@ -85,15 +85,12 @@ CREATE TABLE IF NOT EXISTS company_settings (
   tax_enabled INTEGER DEFAULT 1,
   tax_country_code TEXT DEFAULT 'SA',
   country_code TEXT DEFAULT 'SA',
-  secondary_currency_code TEXT,
-  exchange_rate REAL DEFAULT 1.0,
   calendar_type TEXT DEFAULT 'gregorian',
   date_format TEXT DEFAULT 'dd/MM/yyyy',
   font_family TEXT DEFAULT 'Cairo',
   tax_type TEXT DEFAULT 'VAT',
   coa_template_code TEXT,
   tax_details TEXT,
-  calendar_type TEXT DEFAULT 'gregorian',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
