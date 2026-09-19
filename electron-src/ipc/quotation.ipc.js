@@ -6,34 +6,39 @@ function registerQuotationIpc(ipcMain) {
     try { return { success: true, data: quotationService.searchQuotations(params || {}) }; }
     catch (err) { return { success: false, error: err.message }; }
   });
+
   ipcMain.handle('quotations:options', async (event, branchId) => {
     try { return { success: true, data: quotationService.getFormOptions(branchId || 1) }; }
     catch (err) { return { success: false, error: err.message }; }
   });
+
   ipcMain.handle('quotations:save', async (event, data) => {
     const userId = data?._userId || null;
-    if (!userId) return { success: false, error: 'غير مصرح لك', code: 'UNAUTHORIZED' };
+    if (!userId) return { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' };
     if (!permissionMiddleware.hasPermission(userId, 'sales', 'create') && !permissionMiddleware.hasPermission(userId, 'sales', 'edit')) {
-      return { success: false, error: 'لا تمتلك صلاحية إضافة/تعديل عروض الأسعار', code: 'FORBIDDEN' };
+      return { success: false, error: 'Forbidden', code: 'FORBIDDEN' };
     }
     try {
       const result = quotationService.saveQuotation({ ...data, currentUserId: userId });
-      return { success: true, data: result, message: 'تم حفظ عرض الأسعار بنجاح' };
+      return { success: true, data: result, message: 'Quotation saved' };
     } catch (err) { return { success: false, error: err.message }; }
   });
+
   ipcMain.handle('quotations:get', async (event, data) => {
-    try { return { success: true, data: quotationService.getQuotation(data.id) }; }
+    const id = typeof data === 'number' ? data : data?.id;
+    try { return { success: true, data: quotationService.getQuotation(id) }; }
     catch (err) { return { success: false, error: err.message }; }
   });
+
   ipcMain.handle('quotations:convert-to-invoice', async (event, data) => {
     const userId = data?._userId || null;
-    if (!userId) return { success: false, error: 'غير مصرح لك', code: 'UNAUTHORIZED' };
+    if (!userId) return { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' };
     if (!permissionMiddleware.hasPermission(userId, 'sales', 'create')) {
-      return { success: false, error: 'لا تمتلك صلاحية تحويل العرض لفاتورة', code: 'FORBIDDEN' };
+      return { success: false, error: 'Forbidden', code: 'FORBIDDEN' };
     }
     try {
       const result = quotationService.convertToInvoice(data.quotation_id, { ...data, currentUserId: userId });
-      return { success: true, data: result, message: 'تم تحويل العرض لفاتورة بيع وتحديث المخزون' };
+      return { success: true, data: result, message: 'Quotation converted to invoice' };
     } catch (err) { return { success: false, error: err.message }; }
   });
 }

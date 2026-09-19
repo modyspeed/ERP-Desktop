@@ -1,8 +1,27 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+// Helper: inject current user ID into every IPC call automatically
+function withUserId(payload) {
+  try {
+    const userId = localStorage.getItem('app_user_id');
+    if (userId && typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
+      return { ...payload, _userId: Number(userId) };
+    }
+    if (typeof payload === 'number') {
+      return { id: payload, _userId: Number(userId) };
+    }
+    return payload;
+  } catch {
+    return payload;
+  }
+}
+
 contextBridge.exposeInMainWorld('api', {
-  // Generic invoke
-  invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
+  // Generic invoke with auto userId injection
+  invoke: (channel, ...args) => {
+    const newArgs = args.map(withUserId);
+    return ipcRenderer.invoke(channel, ...newArgs);
+  },
 
   // Authentication
   auth: {

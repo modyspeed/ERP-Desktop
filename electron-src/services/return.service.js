@@ -7,8 +7,8 @@ class ReturnService {
   getSalesReturn(id) { return returnRepository.getSalesReturn(id); }
 
   createSalesReturn(data) {
-    if (!data.invoice_id) throw new Error('الفاتورة مطلوبة');
-    if (!data.items || !data.items.length) throw new Error('يجب إضافة صنف واحد على الأقل');
+    if (!data.invoice_id) throw new Error('Invoice is required');
+    if (!data.items || !data.items.length) throw new Error('At least one item is required');
 
     const result = returnRepository.createSalesReturn(data);
 
@@ -29,8 +29,8 @@ class ReturnService {
   getPurchaseReturn(id) { return returnRepository.getPurchaseReturn(id); }
 
   createPurchaseReturn(data) {
-    if (!data.invoice_id) throw new Error('الفاتورة مطلوبة');
-    if (!data.items || !data.items.length) throw new Error('يجب إضافة صنف واحد على الأقل');
+    if (!data.invoice_id) throw new Error('Invoice is required');
+    if (!data.items || !data.items.length) throw new Error('At least one item is required');
 
     const result = returnRepository.createPurchaseReturn(data);
 

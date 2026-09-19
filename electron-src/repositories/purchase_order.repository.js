@@ -51,10 +51,14 @@ class PurchaseOrderRepository extends BaseRepository {
     `).all(poId);
   }
 
+  findById(id) {
+    return this.db.prepare('SELECT * FROM purchase_orders WHERE id = ? AND is_deleted = 0').get(id);
+  }
+
   savePurchaseOrder({ id, branch_id = 1, supplier_id, date, notes, items = [], total_amount = 0, status = 'pending', created_by }) {
     const db = getDatabase();
-    if (!supplier_id) throw new Error('المورد مطلوب');
-    if (!items || items.length === 0) throw new Error('يجب إضافة صنف واحد على الأقل');
+    if (!supplier_id) throw new Error('Supplier is required');
+    if (!items || items.length === 0) throw new Error('At least one item is required');
 
     const settings = db.prepare('SELECT invoice_prefix_purchase FROM company_settings LIMIT 1').get() || {};
     const prefix = settings.invoice_prefix_purchase || 'PO-';
@@ -85,11 +89,11 @@ class PurchaseOrderRepository extends BaseRepository {
   convertToInvoice(poId, data = {}) {
     const db = getDatabase();
     const po = this.getPurchaseOrder(poId);
-    if (!po) throw new Error('أمر الشراء غير موجود');
-    if (po.status === 'invoiced') throw new Error('تم إنشاء فاتورة لهذا الأمر بالفعل');
+    if (!po) throw new Error('Purchase order not found');
+    if (po.status === 'invoiced') throw new Error('Invoice already created for this order');
 
     const items = this.getPurchaseOrderItems(poId);
-    if (!items.length) throw new Error('أمر الشراء لا يحتوي على أصناف');
+    if (!items.length) throw new Error('Purchase order has no items');
 
     return db.transaction(() => {
       const settings = db.prepare('SELECT invoice_prefix_purchase, tax_enabled, tax_country_code, tax_percentage, purchase_tax_percentage FROM company_settings LIMIT 1').get();
@@ -117,7 +121,7 @@ class PurchaseOrderRepository extends BaseRepository {
       for (const item of items) {
         insertItem.run(invoice.lastInsertRowid, item.product_id, item.qty, item.unit_cost, item.qty * item.unit_cost);
         updateStock.run(item.qty, item.product_id, data.warehouse_id || 1);
-        insertMovement.run(po.branch_id, item.product_id, data.warehouse_id || 1, item.qty, invoice.lastInsertRowid, `شراء من أمر - ${invoiceNumber}`, null);
+        insertMovement.run(po.branch_id, item.product_id, data.warehouse_id || 1, item.qty, invoice.lastInsertRowid, `Purchase from PO - ${invoiceNumber}`, null);
       }
 
       return { invoice: db.prepare('SELECT * FROM purchase_invoices WHERE id = ?').get(invoice.lastInsertRowid), po_number: po.po_number };

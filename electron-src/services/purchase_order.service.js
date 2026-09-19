@@ -7,8 +7,8 @@ class PurchaseOrderService {
   getPurchaseOrder(id) { return purchaseOrderRepository.getPurchaseOrder(id); }
 
   savePurchaseOrder(data) {
-    if (!data.supplier_id) throw new Error('المورد مطلوب');
-    if (!data.items || !data.items.length) throw new Error('يجب إضافة صنف واحد على الأقل');
+    if (!data.supplier_id) throw new Error('Supplier is required');
+    if (!data.items || !data.items.length) throw new Error('At least one item is required');
 
     const existing = data.id ? purchaseOrderRepository.findById(data.id) : null;
     const result = purchaseOrderRepository.savePurchaseOrder({

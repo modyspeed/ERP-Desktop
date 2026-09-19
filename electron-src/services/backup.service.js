@@ -30,7 +30,7 @@ class BackupService {
     const backupFileName = `backup_${timestamp}.db`;
     const backupPath = path.join(backupDir, backupFileName);
 
-    if (!fs.existsSync(dbPath)) throw new Error('قاعدة البيانات غير موجودة');
+    if (!fs.existsSync(dbPath)) throw new Error('Database file not found');
 
     const sourceDb = getDatabase();
     const backupDb = new (require('better-sqlite3'))(backupPath);
@@ -50,7 +50,7 @@ class BackupService {
   }
 
   restore(backupPath, currentUserId) {
-    if (!fs.existsSync(backupPath)) throw new Error('ملف النسخ الاحتياطي غير موجود');
+    if (!fs.existsSync(backupPath)) throw new Error('Backup file not found');
 
     const dbPath = getDbPath();
     const backupDb = new (require('better-sqlite3'))(backupPath);
@@ -73,7 +73,7 @@ class BackupService {
   }
 
   deleteBackup(backupPath, currentUserId) {
-    if (!fs.existsSync(backupPath)) throw new Error('ملف النسخ الاحتياطي غير موجود');
+    if (!fs.existsSync(backupPath)) throw new Error('Backup file not found');
     fs.unlinkSync(backupPath);
 
     auditRepository.log({

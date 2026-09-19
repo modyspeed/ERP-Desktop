@@ -6,7 +6,7 @@ class HrService {
   getFormOptions(branchId) { return hrRepository.getFormOptions(branchId || 1); }
 
   saveEmployee(data) {
-    if (!data.full_name || !data.full_name.trim()) throw new Error('الاسم الكامل مطلوب');
+    if (!data.full_name || !data.full_name.trim()) throw new Error('Full name is required');
     const existing = data.id ? hrRepository.findById(data.id) : null;
     const result = hrRepository.saveEmployee(data);
 
@@ -23,9 +23,9 @@ class HrService {
   }
 
   deleteEmployee(id, currentUserId) {
-    if (!id) throw new Error('معرّف الموظف مطلوب');
+    if (!id) throw new Error('Employee ID is required');
     const emp = hrRepository.findById(id);
-    if (!emp) throw new Error('الжаوب غير موجود');
+    if (!emp) throw new Error('Employee not found');
 
     hrRepository.softDelete(id);
 
@@ -63,10 +63,10 @@ class HrService {
   getLeaves(params) { return hrRepository.getLeaves(params || {}); }
 
   saveLeave(data) {
-    if (!data.employee_id) throw new Error('الموظف مطلوب');
-    if (!data.leave_type) throw new Error('نوع الإجازة مطلوب');
-    if (!data.start_date || !data.end_date) throw new Error('تاريخ البداية والنهاية مطلوبان');
-    if (new Date(data.end_date) < new Date(data.start_date)) throw new Error(' تاريخ النهاية يجب أن يكون بعد تاريخ البداية');
+    if (!data.employee_id) throw new Error('Employee is required');
+    if (!data.leave_type) throw new Error('Leave type is required');
+    if (!data.start_date || !data.end_date) throw new Error('Start and end dates are required');
+    if (new Date(data.end_date) < new Date(data.start_date)) throw new Error('End date must be after start date');
 
     const existing = data.id ? hrRepository.findById(data.id) : null;
     const result = hrRepository.saveLeave(data);

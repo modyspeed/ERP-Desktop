@@ -6,8 +6,8 @@ class QuotationService {
   getFormOptions(branchId) { return quotationRepository.getFormOptions(branchId || 1); }
 
   saveQuotation(data) {
-    if (!data.customer_id) throw new Error('العميل مطلوب');
-    if (!data.items || !data.items.length) throw new Error('يجب إضافة صنف واحد على الأقل');
+    if (!data.customer_id) throw new Error('Customer is required');
+    if (!data.items || !data.items.length) throw new Error('At least one item is required');
 
     const existing = data.id ? quotationRepository.findById(data.id) : null;
     const result = quotationRepository.saveQuotation({ ...data, currentUserId: data.currentUserId || null });
