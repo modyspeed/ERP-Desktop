@@ -8,7 +8,8 @@ function registerHrIpc(ipcMain) {
   });
 
   ipcMain.handle('hr:employees-options', async (event, branchId) => {
-    try { return { success: true, data: hrService.getFormOptions(branchId || 1) }; }
+    const id = typeof branchId === 'object' && branchId !== null ? branchId.id : branchId;
+    try { return { success: true, data: hrService.getFormOptions(id || 1) }; }
     catch (err) { return { success: false, error: err.message }; }
   });
 

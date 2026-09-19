@@ -10,8 +10,9 @@ function registerProductsIPC(ipcMain) {
   });
 
   ipcMain.handle('products:categories', async (event, branchId) => {
+    const id = typeof branchId === 'object' && branchId !== null ? branchId.id : branchId;
     try {
-      return { success: true, data: productService.listCategories(branchId || 1) };
+      return { success: true, data: productService.listCategories(id || 1) };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -26,8 +27,9 @@ function registerProductsIPC(ipcMain) {
   });
 
   ipcMain.handle('products:delete', async (event, id) => {
+    const productId = typeof id === 'object' && id !== null ? id.id : id;
     try {
-      productService.deleteProduct(id);
+      productService.deleteProduct(productId);
       return { success: true, message: 'تم حذف المنتج بنجاح' };
     } catch (err) {
       return { success: false, error: err.message };

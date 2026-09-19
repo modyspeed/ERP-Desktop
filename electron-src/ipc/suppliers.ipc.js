@@ -10,7 +10,8 @@ function registerSuppliersIPC(ipcMain) {
     catch (err) { return { success: false, error: err.message }; }
   });
   ipcMain.handle('suppliers:delete', async (event, id) => {
-    try { supplierService.deleteSupplier(id); return { success: true, message: 'تم حذف المورد بنجاح' }; }
+    const supplierId = typeof id === 'object' && id !== null ? id.id : id;
+    try { supplierService.deleteSupplier(supplierId); return { success: true, message: 'تم حذف المورد بنجاح' }; }
     catch (err) { return { success: false, error: err.message }; }
   });
 }

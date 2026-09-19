@@ -10,18 +10,20 @@ function registerSettingsIPC(ipcMain) {
     }
   });
 
-  ipcMain.handle('settings:update', async (event, { data, currentUserId }) => {
+  ipcMain.handle('settings:update', async (event, params) => {
     try {
-      const updated = settingService.updateSettings(data, currentUserId);
+      const { data, currentUserId, _userId } = params || {};
+      const updated = settingService.updateSettings(data, _userId || currentUserId);
       return { success: true, data: updated, message: 'تم حفظ الإعدادات بنجاح' };
     } catch (err) {
       return { success: false, error: err.message };
     }
   });
 
-  ipcMain.handle('settings:upload-logo', async (event, { fileBuffer, fileName, currentUserId }) => {
+  ipcMain.handle('settings:upload-logo', async (event, params) => {
     try {
-      const updated = settingService.saveLogo({ fileBuffer, fileName, currentUserId });
+      const { fileBuffer, fileName, currentUserId, _userId } = params || {};
+      const updated = settingService.saveLogo({ fileBuffer, fileName, currentUserId: _userId || currentUserId });
       return { success: true, data: updated, message: 'تم تحديث الشعار بنجاح' };
     } catch (err) {
       return { success: false, error: err.message };
@@ -40,16 +42,18 @@ function registerSettingsIPC(ipcMain) {
 
   ipcMain.handle('branches:save', async (event, branchData) => {
     try {
-      const branches = settingService.saveBranch(branchData);
+      const { _userId, ...data } = branchData || {};
+      const branches = settingService.saveBranch({ ...data, currentUserId: _userId || data.currentUserId });
       return { success: true, data: branches, message: 'تم حفظ الفرع بنجاح' };
     } catch (err) {
       return { success: false, error: err.message };
     }
   });
 
-  ipcMain.handle('branches:delete', async (event, { id, currentUserId }) => {
+  ipcMain.handle('branches:delete', async (event, data) => {
     try {
-      settingService.deleteBranch(id, currentUserId);
+      const { id, currentUserId, _userId } = data || {};
+      settingService.deleteBranch(id, _userId || currentUserId);
       const branches = settingService.getAllBranches();
       return { success: true, data: branches, message: 'تم حذف الفرع بنجاح' };
     } catch (err) {

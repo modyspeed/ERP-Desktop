@@ -10,7 +10,8 @@ function registerAccountsIPC(ipcMain) {
     catch (err) { return { success: false, error: err.message }; }
   });
   ipcMain.handle('accounts:delete', async (event, id) => {
-    try { accountService.deleteAccount(id); return { success: true, message: 'تم حذف الحساب بنجاح' }; }
+    const accountId = typeof id === 'object' && id !== null ? id.id : id;
+    try { accountService.deleteAccount(accountId); return { success: true, message: 'تم حذف الحساب بنجاح' }; }
     catch (err) { return { success: false, error: err.message }; }
   });
   ipcMain.handle('accounts:catalogs', async () => {
@@ -22,7 +23,8 @@ function registerAccountsIPC(ipcMain) {
     catch (err) { return { success: false, error: err.message }; }
   });
   ipcMain.handle('accounts:apply-catalog', async (event, id) => {
-    try { return { success: true, data: accountService.applyCatalog(id), message: 'تم تطبيق الدليل المحاسبي بنجاح' }; }
+    const catalogId = typeof id === 'object' && id !== null ? id.id : id;
+    try { return { success: true, data: accountService.applyCatalog(catalogId), message: 'تم تطبيق الدليل المحاسبي بنجاح' }; }
     catch (err) { return { success: false, error: err.message }; }
   });
 }

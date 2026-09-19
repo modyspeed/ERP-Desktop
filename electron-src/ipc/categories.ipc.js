@@ -2,7 +2,8 @@ const categoryService = require('../services/category.service');
 
 function registerCategoriesIPC(ipcMain) {
   ipcMain.handle('categories:list', async (event, branchId) => {
-    try { return { success: true, data: categoryService.listCategories(branchId || 1) }; }
+    const id = typeof branchId === 'object' && branchId !== null ? branchId.id : branchId;
+    try { return { success: true, data: categoryService.listCategories(id || 1) }; }
     catch (err) { return { success: false, error: err.message }; }
   });
   ipcMain.handle('categories:save', async (event, data) => {
@@ -10,7 +11,8 @@ function registerCategoriesIPC(ipcMain) {
     catch (err) { return { success: false, error: err.message }; }
   });
   ipcMain.handle('categories:delete', async (event, id) => {
-    try { categoryService.deleteCategory(id); return { success: true, message: 'تم حذف التصنيف بنجاح' }; }
+    const categoryId = typeof id === 'object' && id !== null ? id.id : id;
+    try { categoryService.deleteCategory(categoryId); return { success: true, message: 'تم حذف التصنيف بنجاح' }; }
     catch (err) { return { success: false, error: err.message }; }
   });
 }

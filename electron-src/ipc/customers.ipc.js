@@ -12,7 +12,8 @@ function registerCustomersIPC(ipcMain) {
   });
 
   ipcMain.handle('customers:delete', async (event, id) => {
-    try { customerService.deleteCustomer(id); return { success: true, message: 'تم حذف العميل بنجاح' }; }
+    const customerId = typeof id === 'object' && id !== null ? id.id : id;
+    try { customerService.deleteCustomer(customerId); return { success: true, message: 'تم حذف العميل بنجاح' }; }
     catch (err) { return { success: false, error: err.message }; }
   });
 }

@@ -20,8 +20,9 @@ function registerAuthIPC(ipcMain) {
   });
 
   ipcMain.handle('auth:get-current-user', async (event, userId) => {
+    const id = typeof userId === 'object' && userId !== null ? userId.id : userId;
     try {
-      const user = authService.getCurrentUser(userId);
+      const user = authService.getCurrentUser(id);
       return { success: true, data: user };
     } catch (err) {
       return { success: false, error: err.message };

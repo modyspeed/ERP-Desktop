@@ -11,8 +11,9 @@ function registerUsersIPC(ipcMain) {
   });
 
   ipcMain.handle('users:get', async (event, id) => {
+    const userId = typeof id === 'object' && id !== null ? id.id : id;
     try {
-      const user = userService.getUser(id);
+      const user = userService.getUser(userId);
       return { success: true, data: user };
     } catch (err) {
       return { success: false, error: err.message };
@@ -21,25 +22,29 @@ function registerUsersIPC(ipcMain) {
 
   ipcMain.handle('users:create', async (event, userData) => {
     try {
-      const created = userService.createUser(userData);
+      const currentUserId = userData?._userId || userData?.currentUserId;
+      const created = userService.createUser({ ...userData, currentUserId });
       return { success: true, data: created, message: 'تم إنشاء المستخدم بنجاح' };
     } catch (err) {
       return { success: false, error: err.message };
     }
   });
 
-  ipcMain.handle('users:update', async (event, { id, ...userData }) => {
+  ipcMain.handle('users:update', async (event, userData) => {
     try {
-      const updated = userService.updateUser(id, userData);
+      const { id, _userId, ...data } = userData || {};
+      const currentUserId = _userId || data.currentUserId;
+      const updated = userService.updateUser(id, { ...data, currentUserId });
       return { success: true, data: updated, message: 'تم تحديث بيانات المستخدم بنجاح' };
     } catch (err) {
       return { success: false, error: err.message };
     }
   });
 
-  ipcMain.handle('users:delete', async (event, { id, currentUserId }) => {
+  ipcMain.handle('users:delete', async (event, data) => {
     try {
-      userService.deleteUser(id, currentUserId);
+      const { id, currentUserId, _userId } = data || {};
+      userService.deleteUser(id, _userId || currentUserId);
       return { success: true, message: 'تم حذف المستخدم بنجاح' };
     } catch (err) {
       return { success: false, error: err.message };
@@ -58,16 +63,18 @@ function registerUsersIPC(ipcMain) {
 
   ipcMain.handle('roles:save', async (event, roleData) => {
     try {
-      const roles = userService.saveRole(roleData);
+      const currentUserId = roleData?._userId || roleData?.currentUserId;
+      const roles = userService.saveRole({ ...roleData, currentUserId });
       return { success: true, data: roles, message: 'تم حفظ الدور والصلاحيات بنجاح' };
     } catch (err) {
       return { success: false, error: err.message };
     }
   });
 
-  ipcMain.handle('roles:delete', async (event, { id, currentUserId }) => {
+  ipcMain.handle('roles:delete', async (event, data) => {
     try {
-      userService.deleteRole(id, currentUserId);
+      const { id, currentUserId, _userId } = data || {};
+      userService.deleteRole(id, _userId || currentUserId);
       return { success: true, message: 'تم حذف الدور بنجاح' };
     } catch (err) {
       return { success: false, error: err.message };

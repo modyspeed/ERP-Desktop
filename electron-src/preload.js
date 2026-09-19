@@ -1,201 +1,203 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Helper: inject current user ID into every IPC call automatically
-function withUserId(payload) {
+function getUserId() {
   try {
-    const userId = localStorage.getItem('app_user_id');
-    if (userId && typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
-      return { ...payload, _userId: Number(userId) };
-    }
-    if (typeof payload === 'number') {
-      return { id: payload, _userId: Number(userId) };
-    }
-    return payload;
+    const userId = Number(localStorage.getItem('app_user_id'));
+    return Number.isFinite(userId) && userId > 0 ? userId : null;
   } catch {
-    return payload;
+    return null;
   }
 }
 
+function withUserId(payload) {
+  const userId = getUserId();
+  if (!userId) return payload;
+  if (typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
+    return { ...payload, _userId: userId };
+  }
+  if (typeof payload === 'number') {
+    return { id: payload, _userId: userId };
+  }
+  return payload;
+}
+
+function invokeWithUser(channel, payload) {
+  const userId = getUserId();
+  if (!userId) return ipcRenderer.invoke(channel, payload);
+  if (payload === undefined || payload === null) {
+    return ipcRenderer.invoke(channel, { _userId: userId });
+  }
+  if (typeof payload === 'string' && (channel === 'backup:restore' || channel === 'backup:delete')) {
+    return ipcRenderer.invoke(channel, { filePath: payload, _userId: userId });
+  }
+  return ipcRenderer.invoke(channel, withUserId(payload));
+}
+
 contextBridge.exposeInMainWorld('api', {
-  // Generic invoke with auto userId injection
   invoke: (channel, ...args) => {
-    const newArgs = args.map(withUserId);
-    return ipcRenderer.invoke(channel, ...newArgs);
+    if (args.length === 0) return invokeWithUser(channel);
+    if (args.length === 1) return invokeWithUser(channel, args[0]);
+    return ipcRenderer.invoke(channel, ...args.map(withUserId));
   },
 
-  // Authentication
   auth: {
-    login: (credentials) => ipcRenderer.invoke('auth:login', credentials),
-    changePassword: (params) => ipcRenderer.invoke('auth:change-password', params),
-    getCurrentUser: (userId) => ipcRenderer.invoke('auth:get-current-user', userId),
+    login: (credentials) => invokeWithUser('auth:login', credentials),
+    changePassword: (params) => invokeWithUser('auth:change-password', params),
+    getCurrentUser: (userId) => invokeWithUser('auth:get-current-user', userId),
   },
 
-  // Users & Roles & Permissions
   users: {
-    search: (params) => ipcRenderer.invoke('users:search', params),
-    get: (id) => ipcRenderer.invoke('users:get', id),
-    create: (userData) => ipcRenderer.invoke('users:create', userData),
-    update: (userData) => ipcRenderer.invoke('users:update', userData),
-    delete: (params) => ipcRenderer.invoke('users:delete', params),
+    search: (params) => invokeWithUser('users:search', params),
+    get: (id) => invokeWithUser('users:get', id),
+    create: (userData) => invokeWithUser('users:create', userData),
+    update: (userData) => invokeWithUser('users:update', userData),
+    delete: (params) => invokeWithUser('users:delete', params),
   },
   roles: {
-    list: () => ipcRenderer.invoke('roles:list'),
-    save: (roleData) => ipcRenderer.invoke('roles:save', roleData),
-    delete: (params) => ipcRenderer.invoke('roles:delete', params),
+    list: () => invokeWithUser('roles:list'),
+    save: (roleData) => invokeWithUser('roles:save', roleData),
+    delete: (params) => invokeWithUser('roles:delete', params),
   },
   permissions: {
-    list: () => ipcRenderer.invoke('permissions:list'),
+    list: () => invokeWithUser('permissions:list'),
   },
 
-  // Settings & Branches
   settings: {
-    get: () => ipcRenderer.invoke('settings:get'),
-    update: (params) => ipcRenderer.invoke('settings:update', params),
-    uploadLogo: (params) => ipcRenderer.invoke('settings:upload-logo', params),
+    get: () => invokeWithUser('settings:get'),
+    update: (params) => invokeWithUser('settings:update', params),
+    uploadLogo: (params) => invokeWithUser('settings:upload-logo', params),
   },
   branches: {
-    list: () => ipcRenderer.invoke('branches:list'),
-    save: (branchData) => ipcRenderer.invoke('branches:save', branchData),
-    delete: (params) => ipcRenderer.invoke('branches:delete', params),
+    list: () => invokeWithUser('branches:list'),
+    save: (branchData) => invokeWithUser('branches:save', branchData),
+    delete: (params) => invokeWithUser('branches:delete', params),
   },
 
-  // Audit Logs
   audit: {
-    search: (params) => ipcRenderer.invoke('audit:search', params),
-    getModules: () => ipcRenderer.invoke('audit:modules'),
+    search: (params) => invokeWithUser('audit:search', params),
+    getModules: () => invokeWithUser('audit:modules'),
   },
 
-  // Dashboard Analytics
   dashboard: {
-    getMetrics: (branchId) => ipcRenderer.invoke('dashboard:get-metrics', branchId),
-    getCharts: () => ipcRenderer.invoke('dashboard:get-charts'),
-    getAlerts: () => ipcRenderer.invoke('dashboard:get-alerts'),
-    getActivities: (limit) => ipcRenderer.invoke('dashboard:get-activities', limit),
+    getMetrics: (branchId) => invokeWithUser('dashboard:get-metrics', branchId),
+    getCharts: () => invokeWithUser('dashboard:get-charts'),
+    getAlerts: () => invokeWithUser('dashboard:get-alerts'),
+    getActivities: (limit) => invokeWithUser('dashboard:get-activities', limit),
   },
 
-  // Inventory & Products
   products: {
-    search: (params) => ipcRenderer.invoke('products:search', params),
-    categories: (branchId) => ipcRenderer.invoke('products:categories', branchId),
-    save: (data) => ipcRenderer.invoke('products:save', data),
-    delete: (id) => ipcRenderer.invoke('products:delete', id),
+    search: (params) => invokeWithUser('products:search', params),
+    categories: (branchId) => invokeWithUser('products:categories', branchId),
+    save: (data) => invokeWithUser('products:save', data),
+    delete: (id) => invokeWithUser('products:delete', id),
   },
 
-  // Sales & Customers
   customers: {
-    search: (params) => ipcRenderer.invoke('customers:search', params),
-    save: (data) => ipcRenderer.invoke('customers:save', data),
-    delete: (id) => ipcRenderer.invoke('customers:delete', id),
+    search: (params) => invokeWithUser('customers:search', params),
+    save: (data) => invokeWithUser('customers:save', data),
+    delete: (id) => invokeWithUser('customers:delete', id),
   },
 
-  // Sales Invoices
   sales: {
-    invoices: (params) => ipcRenderer.invoke('sales:invoices', params),
-    options: (branchId) => ipcRenderer.invoke('sales:options', branchId),
-    createInvoice: (data) => ipcRenderer.invoke('sales:create-invoice', data),
+    invoices: (params) => invokeWithUser('sales:invoices', params),
+    options: (branchId) => invokeWithUser('sales:options', branchId),
+    createInvoice: (data) => invokeWithUser('sales:create-invoice', data),
   },
 
-  // Purchases & Suppliers
   suppliers: {
-    search: (params) => ipcRenderer.invoke('suppliers:search', params),
-    save: (data) => ipcRenderer.invoke('suppliers:save', data),
-    delete: (id) => ipcRenderer.invoke('suppliers:delete', id),
+    search: (params) => invokeWithUser('suppliers:search', params),
+    save: (data) => invokeWithUser('suppliers:save', data),
+    delete: (id) => invokeWithUser('suppliers:delete', id),
   },
 
-  // Purchase Invoices
   purchases: {
-    invoices: (params) => ipcRenderer.invoke('purchases:invoices', params),
-    options: (branchId) => ipcRenderer.invoke('purchases:options', branchId),
-    createInvoice: (data) => ipcRenderer.invoke('purchases:create-invoice', data),
+    invoices: (params) => invokeWithUser('purchases:invoices', params),
+    options: (branchId) => invokeWithUser('purchases:options', branchId),
+    createInvoice: (data) => invokeWithUser('purchases:create-invoice', data),
   },
 
-  // Accounting
   accounts: {
-    list: (params) => ipcRenderer.invoke('accounts:list', params),
-    save: (data) => ipcRenderer.invoke('accounts:save', data),
-    delete: (id) => ipcRenderer.invoke('accounts:delete', id),
-    catalogs: () => ipcRenderer.invoke('accounts:catalogs'),
-    createCatalog: (data) => ipcRenderer.invoke('accounts:create-catalog', data),
-    applyCatalog: (id) => ipcRenderer.invoke('accounts:apply-catalog', id),
+    list: (params) => invokeWithUser('accounts:list', params),
+    save: (data) => invokeWithUser('accounts:save', data),
+    delete: (id) => invokeWithUser('accounts:delete', id),
+    catalogs: () => invokeWithUser('accounts:catalogs'),
+    createCatalog: (data) => invokeWithUser('accounts:create-catalog', data),
+    applyCatalog: (id) => invokeWithUser('accounts:apply-catalog', id),
   },
 
-  // Inventory Categories
   categories: {
-    list: (branchId) => ipcRenderer.invoke('categories:list', branchId),
-    save: (data) => ipcRenderer.invoke('categories:save', data),
-    delete: (id) => ipcRenderer.invoke('categories:delete', id),
+    list: (branchId) => invokeWithUser('categories:list', branchId),
+    save: (data) => invokeWithUser('categories:save', data),
+    delete: (id) => invokeWithUser('categories:delete', id),
   },
 
   taxes: {
-    list: (params) => ipcRenderer.invoke('taxes:list', params),
-    update: (data) => ipcRenderer.invoke('taxes:update', data),
+    list: (params) => invokeWithUser('taxes:list', params),
+    update: (data) => invokeWithUser('taxes:update', data),
   },
 
   backup: {
-    list: () => ipcRenderer.invoke('backup:list'),
-    create: () => ipcRenderer.invoke('backup:create'),
-    restore: (filePath) => ipcRenderer.invoke('backup:restore', filePath),
-    delete: (filePath) => ipcRenderer.invoke('backup:delete', filePath),
+    list: () => invokeWithUser('backup:list'),
+    create: () => invokeWithUser('backup:create'),
+    restore: (filePath) => invokeWithUser('backup:restore', filePath),
+    delete: (filePath) => invokeWithUser('backup:delete', filePath),
   },
 
   warehouses: {
-    search: (params) => ipcRenderer.invoke('warehouses:search', params),
-    stock: (warehouseId) => ipcRenderer.invoke('warehouses:stock', warehouseId),
-    save: (data) => ipcRenderer.invoke('warehouses:save', data),
-    transfer: (data) => ipcRenderer.invoke('warehouses:transfer', data),
+    search: (params) => invokeWithUser('warehouses:search', params),
+    stock: (warehouseId) => invokeWithUser('warehouses:stock', warehouseId),
+    save: (data) => invokeWithUser('warehouses:save', data),
+    transfer: (data) => invokeWithUser('warehouses:transfer', data),
   },
 
   purchaseOrders: {
-    search: (params) => ipcRenderer.invoke('purchase-orders:search', params),
-    options: (branchId) => ipcRenderer.invoke('purchase-orders:options', branchId),
-    save: (data) => ipcRenderer.invoke('purchase-orders:save', data),
-    get: (id) => ipcRenderer.invoke('purchase-orders:get', id),
-    convertToInvoice: (data) => ipcRenderer.invoke('purchase-orders:convert-to-invoice', data),
+    search: (params) => invokeWithUser('purchase-orders:search', params),
+    options: (branchId) => invokeWithUser('purchase-orders:options', branchId),
+    save: (data) => invokeWithUser('purchase-orders:save', data),
+    get: (id) => invokeWithUser('purchase-orders:get', id),
+    convertToInvoice: (data) => invokeWithUser('purchase-orders:convert-to-invoice', data),
   },
 
   returns: {
-    salesSearch: (params) => ipcRenderer.invoke('returns:sales-search', params),
-    salesGet: (id) => ipcRenderer.invoke('returns:sales-get', id),
-    salesCreate: (data) => ipcRenderer.invoke('returns:sales-create', data),
-    purchasesSearch: (params) => ipcRenderer.invoke('returns:purchases-search', params),
-    purchasesGet: (id) => ipcRenderer.invoke('returns:purchases-get', id),
-    purchasesCreate: (data) => ipcRenderer.invoke('returns:purchases-create', data),
+    salesSearch: (params) => invokeWithUser('returns:sales-search', params),
+    salesGet: (id) => invokeWithUser('returns:sales-get', id),
+    salesCreate: (data) => invokeWithUser('returns:sales-create', data),
+    purchasesSearch: (params) => invokeWithUser('returns:purchases-search', params),
+    purchasesGet: (id) => invokeWithUser('returns:purchases-get', id),
+    purchasesCreate: (data) => invokeWithUser('returns:purchases-create', data),
   },
 
   quotations: {
-    search: (params) => ipcRenderer.invoke('quotations:search', params),
-    options: (branchId) => ipcRenderer.invoke('quotations:options', branchId),
-    save: (data) => ipcRenderer.invoke('quotations:save', data),
-    get: (id) => ipcRenderer.invoke('quotations:get', id),
-    convertToInvoice: (data) => ipcRenderer.invoke('quotations:convert-to-invoice', data),
+    search: (params) => invokeWithUser('quotations:search', params),
+    options: (branchId) => invokeWithUser('quotations:options', branchId),
+    save: (data) => invokeWithUser('quotations:save', data),
+    get: (id) => invokeWithUser('quotations:get', id),
+    convertToInvoice: (data) => invokeWithUser('quotations:convert-to-invoice', data),
   },
 
-  // Reports
   reports: {
-    profitLoss: (params) => ipcRenderer.invoke('reports:profit-loss', params),
-    inventoryMovement: (params) => ipcRenderer.invoke('reports:inventory-movement', params),
-    taxReport: (params) => ipcRenderer.invoke('reports:tax-report', params),
-    salesSummary: (params) => ipcRenderer.invoke('reports:sales-summary', params),
+    profitLoss: (params) => invokeWithUser('reports:profit-loss', params),
+    inventoryMovement: (params) => invokeWithUser('reports:inventory-movement', params),
+    taxReport: (params) => invokeWithUser('reports:tax-report', params),
+    salesSummary: (params) => invokeWithUser('reports:sales-summary', params),
   },
 
-  // HR
   hr: {
-    employees: (params) => ipcRenderer.invoke('hr:employees-search', params),
-    employeeOptions: (branchId) => ipcRenderer.invoke('hr:employees-options', branchId),
-    employeeSave: (data) => ipcRenderer.invoke('hr:employee-save', data),
-    employeeDelete: (id) => ipcRenderer.invoke('hr:employee-delete', id),
-    attendance: (params) => ipcRenderer.invoke('hr:attendance-search', params),
-    attendanceSummary: (params) => ipcRenderer.invoke('hr:attendance-summary', params),
-    attendanceUpsert: (data) => ipcRenderer.invoke('hr:attendance-upsert', data),
-    leaves: (params) => ipcRenderer.invoke('hr:leaves-search', params),
-    leaveSave: (data) => ipcRenderer.invoke('hr:leave-save', data),
-    payrolls: (params) => ipcRenderer.invoke('hr:payrolls-search', params),
-    payrollGenerate: (data) => ipcRenderer.invoke('hr:payroll-generate', data),
+    employees: (params) => invokeWithUser('hr:employees-search', params),
+    employeeOptions: (branchId) => invokeWithUser('hr:employees-options', branchId),
+    employeeSave: (data) => invokeWithUser('hr:employee-save', data),
+    employeeDelete: (id) => invokeWithUser('hr:employee-delete', id),
+    attendance: (params) => invokeWithUser('hr:attendance-search', params),
+    attendanceSummary: (params) => invokeWithUser('hr:attendance-summary', params),
+    attendanceUpsert: (data) => invokeWithUser('hr:attendance-upsert', data),
+    leaves: (params) => invokeWithUser('hr:leaves-search', params),
+    leaveSave: (data) => invokeWithUser('hr:leave-save', data),
+    payrolls: (params) => invokeWithUser('hr:payrolls-search', params),
+    payrollGenerate: (data) => invokeWithUser('hr:payroll-generate', data),
   },
 
-  // Hardware
   hardware: {
-    printReceipt: (params) => ipcRenderer.invoke('hardware:print-receipt', params),
-    openCashDrawer: () => ipcRenderer.invoke('hardware:open-cashdrawer'),
+    printReceipt: (params) => invokeWithUser('hardware:print-receipt', params),
+    openCashDrawer: () => invokeWithUser('hardware:open-cashdrawer'),
   },
 });

@@ -7,11 +7,13 @@ function registerPurchaseOrderIpc(ipcMain) {
     catch (err) { return { success: false, error: err.message }; }
   });
   ipcMain.handle('purchase-orders:options', async (event, branchId) => {
-    try { return { success: true, data: purchaseOrderService.getFormOptions(branchId || 1) }; }
+    const id = typeof branchId === 'object' && branchId !== null ? branchId.id : branchId;
+    try { return { success: true, data: purchaseOrderService.getFormOptions(id || 1) }; }
     catch (err) { return { success: false, error: err.message }; }
   });
   ipcMain.handle('purchase-orders:get', async (event, data) => {
-    try { return { success: true, data: purchaseOrderService.getPurchaseOrder(data.id) }; }
+    const id = typeof data === 'number' ? data : data?.id;
+    try { return { success: true, data: purchaseOrderService.getPurchaseOrder(id) }; }
     catch (err) { return { success: false, error: err.message }; }
   });
   ipcMain.handle('purchase-orders:save', async (event, data) => {

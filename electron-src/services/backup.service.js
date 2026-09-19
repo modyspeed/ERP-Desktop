@@ -34,7 +34,7 @@ class BackupService {
 
     const sourceDb = getDatabase();
     const backupDb = new (require('better-sqlite3'))(backupPath);
-    sourceDb.backup(backupDb);
+    sourceDb.backup(backupPath);
     backupDb.close();
 
     auditRepository.log({
@@ -54,10 +54,9 @@ class BackupService {
 
     const dbPath = getDbPath();
     const backupDb = new (require('better-sqlite3'))(backupPath);
-    const targetDb = getDatabase();
 
-    targetDb.pragma('wal_checkpoint(TRUNCATE)');
-    backupDb.backup(targetDb);
+    getDatabase().pragma('wal_checkpoint(TRUNCATE)');
+    backupDb.backup(dbPath);
     backupDb.close();
 
     auditRepository.log({
