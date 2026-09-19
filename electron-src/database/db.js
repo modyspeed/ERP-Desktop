@@ -58,6 +58,28 @@ function initDatabase() {
     if (!settingsColumns.includes('purchase_tax_percentage')) {
       dbInstance.exec("ALTER TABLE company_settings ADD COLUMN purchase_tax_percentage REAL DEFAULT 15.0");
     }
+    // New columns for Phase 1
+    if (!settingsColumns.includes('country_code')) {
+      dbInstance.exec("ALTER TABLE company_settings ADD COLUMN country_code TEXT DEFAULT 'SA'");
+    }
+    if (!settingsColumns.includes('secondary_currency_code')) {
+      dbInstance.exec("ALTER TABLE company_settings ADD COLUMN secondary_currency_code TEXT");
+    }
+    if (!settingsColumns.includes('exchange_rate')) {
+      dbInstance.exec("ALTER TABLE company_settings ADD COLUMN exchange_rate REAL DEFAULT 1.0");
+    }
+    if (!settingsColumns.includes('date_format')) {
+      dbInstance.exec("ALTER TABLE company_settings ADD COLUMN date_format TEXT DEFAULT 'dd/MM/yyyy'");
+    }
+    if (!settingsColumns.includes('font_family')) {
+      dbInstance.exec("ALTER TABLE company_settings ADD COLUMN font_family TEXT DEFAULT 'Cairo'");
+    }
+    if (!settingsColumns.includes('tax_type')) {
+      dbInstance.exec("ALTER TABLE company_settings ADD COLUMN tax_type TEXT DEFAULT 'VAT'");
+    }
+    if (!settingsColumns.includes('coa_template_code')) {
+      dbInstance.exec("ALTER TABLE company_settings ADD COLUMN coa_template_code TEXT");
+    }
     const quotationColumns = dbInstance.prepare('PRAGMA table_info(quotations)').all().map((column) => column.name);
     if (!quotationColumns.includes('notes')) dbInstance.exec('ALTER TABLE quotations ADD COLUMN notes TEXT');
     const purchaseOrderColumns = dbInstance.prepare('PRAGMA table_info(purchase_orders)').all().map((column) => column.name);

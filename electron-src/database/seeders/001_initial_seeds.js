@@ -121,6 +121,39 @@ function runSeeders(db) {
       1
     );
 
+    // 6.5 Seed Countries, Currencies, Fonts
+    const insertCountry = db.prepare('INSERT INTO countries (code, name_ar, name_en, default_currency_code, default_tax_type, default_tax_percentage) VALUES (?, ?, ?, ?, ?, ?)');
+    insertCountry.run('SA', 'السعودية', 'Saudi Arabia', 'SAR', 'VAT', 15);
+    insertCountry.run('EG', 'مصر', 'Egypt', 'EGP', 'VAT', 14);
+    insertCountry.run('AE', 'الإمارات', 'United Arab Emirates', 'AED', 'VAT', 5);
+    insertCountry.run('BH', 'البحرين', 'Bahrain', 'BHD', 'VAT', 5);
+    insertCountry.run('KW', 'الكويت', 'Kuwait', 'KWD', 'VAT', 5);
+    insertCountry.run('QA', 'قطر', 'Qatar', 'QAR', 'VAT', 0);
+    insertCountry.run('OM', 'عُمان', 'Oman', 'OMR', 'VAT', 5);
+    insertCountry.run('JO', 'الأردن', 'Jordan', 'JOD', 'VAT', 16);
+    insertCountry.run('IQ', 'العراق', 'Iraq', 'IQD', 'VAT', 0);
+    insertCountry.run('MA', 'المغرب', 'Morocco', 'MAD', 'VAT', 20);
+
+    const insertCurrency = db.prepare('INSERT INTO currencies (code, name_ar, name_en, symbol, decimal_places) VALUES (?, ?, ?, ?, ?)');
+    insertCurrency.run('SAR', 'ريال سعودي', 'Saudi Riyal', '﷼', 2);
+    insertCurrency.run('EGP', 'جنيه مصري', 'Egyptian Pound', 'ج.م', 2);
+    insertCurrency.run('AED', 'درهم إماراتي', 'UAE Dirham', 'د.إ', 2);
+    insertCurrency.run('BHD', 'دينار بحريني', 'Bahraini Dinar', '.د.ب', 3);
+    insertCurrency.run('KWD', 'دينار كويتي', 'Kuwaiti Dinar', 'د.ك', 3);
+    insertCurrency.run('QAR', 'ريال قطري', 'Qatari Riyal', 'ر.ق', 2);
+    insertCurrency.run('OMR', 'ريال عماني', 'Omani Rial', 'ر.ع.', 3);
+    insertCurrency.run('JOD', 'دينار أردني', 'Jordanian Dinar', 'د.أ', 3);
+    insertCurrency.run('IQD', 'دينار عراقي', 'Iraqi Dinar', 'د.ع', 3);
+    insertCurrency.run('MAD', 'درهم مغربي', 'Moroccan Dirham', 'د.م.', 2);
+
+    const insertFont = db.prepare('INSERT INTO fonts (code, name_ar, name_en, font_file_path, supports_arabic) VALUES (?, ?, ?, ?, ?)');
+    insertFont.run('Cairo', 'القاهرة', 'Cairo', 'fonts/Cairo-Regular.ttf', 1);
+    insertFont.run('Amiri', 'أميري', 'Amiri', 'fonts/Amiri-Regular.ttf', 1);
+    insertFont.run('Tajawal', 'تجويد', 'Tajawal', 'fonts/Tajawal-Regular.ttf', 1);
+    insertFont.run('Noto Kufi Arabic', 'نوتو كوفي', 'Noto Kufi Arabic', 'fonts/NotoKufiArabic-Regular.ttf', 1);
+    insertFont.run('Roboto', 'روبوتو', 'Roboto', 'fonts/Roboto-Regular.ttf', 0);
+    insertFont.run('Open Sans', 'أوبن سانس', 'Open Sans', 'fonts/OpenSans-Regular.ttf', 0);
+
     // 7. Seed Initial Units & Categories (Foundation)
     const insertUnit = db.prepare('INSERT INTO units (name, symbol) VALUES (?, ?)');
     insertUnit.run('قطعة', 'حبة');

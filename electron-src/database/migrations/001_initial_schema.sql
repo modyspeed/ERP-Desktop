@@ -72,6 +72,8 @@ CREATE TABLE IF NOT EXISTS company_settings (
   email TEXT,
   tax_number TEXT,
   currency_code TEXT DEFAULT 'SAR',
+  secondary_currency_code TEXT,
+  exchange_rate REAL DEFAULT 1.0,
   default_language TEXT DEFAULT 'ar',
   theme_color TEXT DEFAULT '#2563eb',
   dark_mode_default INTEGER DEFAULT 0,
@@ -82,6 +84,14 @@ CREATE TABLE IF NOT EXISTS company_settings (
   purchase_tax_percentage REAL DEFAULT 15.0,
   tax_enabled INTEGER DEFAULT 1,
   tax_country_code TEXT DEFAULT 'SA',
+  country_code TEXT DEFAULT 'SA',
+  secondary_currency_code TEXT,
+  exchange_rate REAL DEFAULT 1.0,
+  calendar_type TEXT DEFAULT 'gregorian',
+  date_format TEXT DEFAULT 'dd/MM/yyyy',
+  font_family TEXT DEFAULT 'Cairo',
+  tax_type TEXT DEFAULT 'VAT',
+  coa_template_code TEXT,
   tax_details TEXT,
   calendar_type TEXT DEFAULT 'gregorian',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -604,4 +614,44 @@ CREATE TABLE IF NOT EXISTS attachments (
   file_name TEXT,
   uploaded_by INTEGER,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 12.11 Countries
+CREATE TABLE IF NOT EXISTS countries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE, -- ISO 3166-1 alpha-2
+  name_ar TEXT NOT NULL,
+  name_en TEXT NOT NULL,
+  default_currency_code TEXT,
+  default_tax_type TEXT,
+  default_tax_percentage REAL DEFAULT 0,
+  is_active INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 12.12 Currencies
+CREATE TABLE IF NOT EXISTS currencies (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE, -- ISO 4217
+  name_ar TEXT NOT NULL,
+  name_en TEXT NOT NULL,
+  symbol TEXT,
+  decimal_places INTEGER DEFAULT 2,
+  is_active INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 12.13 Fonts
+CREATE TABLE IF NOT EXISTS fonts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  name_ar TEXT NOT NULL,
+  name_en TEXT NOT NULL,
+  font_file_path TEXT, -- relative path to font file in assets/fonts
+  supports_arabic INTEGER DEFAULT 1,
+  is_active INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
