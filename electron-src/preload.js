@@ -73,6 +73,16 @@ contextBridge.exposeInMainWorld('api', {
     delete: (params) => invokeWithUser('branches:delete', params),
   },
 
+  countries: {
+    list: () => invokeWithUser('countries:list'),
+  },
+  currencies: {
+    list: () => invokeWithUser('currencies:list'),
+  },
+  fonts: {
+    list: () => invokeWithUser('fonts:list'),
+  },
+
   audit: {
     search: (params) => invokeWithUser('audit:search', params),
     getModules: () => invokeWithUser('audit:modules'),

@@ -367,6 +367,9 @@ const SettingsPage = () => {
   const [accountingCatalogModalOpen, setAccountingCatalogModalOpen] = useState(false);
   const [accountingCatalogForm, setAccountingCatalogForm] = useState({ name: '', description: '' });
   const [taxRules, setTaxRules] = useState([]);
+  const [countries, setCountries] = useState([]);
+  const [currencies, setCurrencies] = useState([]);
+  const [fonts, setFonts] = useState([]);
 
   // Form states
   const [companyForm, setCompanyForm] = useState({
@@ -379,8 +382,15 @@ const SettingsPage = () => {
 
   const [invoicingForm, setInvoicingForm] = useState({
     currency_code: 'SAR',
+    secondary_currency_code: '',
+    exchange_rate: 1.0,
     tax_country_code: 'SA',
+    country_code: 'SA',
     calendar_type: 'gregorian',
+    date_format: 'dd/MM/yyyy',
+    font_family: 'Cairo',
+    tax_type: 'VAT',
+    coa_template_code: '',
     invoice_prefix_sales: 'INV-',
     invoice_prefix_purchase: 'PO-',
     tax_percentage: 15.0,
@@ -424,6 +434,24 @@ const SettingsPage = () => {
 
   useEffect(() => { loadAccountingCatalogs(); }, []);
 
+  useEffect(() => {
+    const fetchLookups = async () => {
+      try {
+        const [countriesRes, currenciesRes, fontsRes] = await Promise.all([
+          window.api.countries.list(),
+          window.api.currencies.list(),
+          window.api.fonts.list(),
+        ]);
+        if (countriesRes.success) setCountries(countriesRes.data);
+        if (currenciesRes.success) setCurrencies(currenciesRes.data);
+        if (fontsRes.success) setFonts(fontsRes.data);
+      } catch (err) {
+        console.error('Failed to fetch lookups:', err);
+      }
+    };
+    fetchLookups();
+  }, []);
+
   const loadTaxRules = async (countryCode = invoicingForm.tax_country_code) => {
     const response = await window.api?.taxes?.list({ countryCode, includeDisabled: true });
     if (response?.success) setTaxRules(response.data);
@@ -466,14 +494,23 @@ const SettingsPage = () => {
 
       setInvoicingForm({
         currency_code: settings.currency_code || 'SAR',
+        secondary_currency_code: settings.secondary_currency_code || '',
+        exchange_rate: settings.exchange_rate || 1.0,
         tax_country_code: settings.tax_country_code || 'SA',
+        country_code: settings.country_code || 'SA',
         calendar_type: settings.calendar_type || 'gregorian',
+        date_format: settings.date_format || 'dd/MM/yyyy',
+        font_family: settings.font_family || 'Cairo',
+        tax_type: settings.tax_type || 'VAT',
+        coa_template_code: settings.coa_template_code || '',
         invoice_prefix_sales: settings.invoice_prefix_sales || 'INV-',
         invoice_prefix_purchase: settings.invoice_prefix_purchase || 'PO-',
         tax_percentage: settings.tax_percentage !== undefined ? settings.tax_percentage : 15.0,
         sales_tax_percentage: settings.sales_tax_percentage ?? settings.tax_percentage ?? 15.0,
         purchase_tax_percentage: settings.purchase_tax_percentage ?? settings.tax_percentage ?? 15.0,
         tax_enabled: settings.tax_enabled !== undefined ? settings.tax_enabled : 1,
+        tax_type: settings.tax_type || 'VAT',
+        coa_template_code: settings.coa_template_code || '',
       });
     }
   }, [settings]);
@@ -908,45 +945,31 @@ const SettingsPage = () => {
         <Card title={t('settings.invoicingTab')}>
           <form onSubmit={handleSaveInvoicing} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>{t('settings.currencyCode')}<select value={invoicingForm.currency_code} onChange={(e) => setInvoicingForm({ ...invoicingForm, currency_code: e.target.value })} required style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>{currencyOptions.map((currency) => <option key={currency.code} value={currency.code}>{currency.name} ({currency.code})</option>)}</select></label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>الدولة<select value={invoicingForm.country_code} onChange={(e) => { const c = countries.find((item) => item.code === e.target.value); setInvoicingForm({ ...invoicingForm, country_code: e.target.value, tax_country_code: e.target.value, currency_code: c?.default_currency_code || 'SAR' }); }} required style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>{countries.map((country) => <option key={country.code} value={country.code}>{country.name_ar}</option>)}</select></label>
 
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>الدولة الضريبية<select value={invoicingForm.tax_country_code} onChange={(e) => { const country = taxCountryOptions.find((item) => item.code === e.target.value); const rate = country?.rate ?? 0; setInvoicingForm({ ...invoicingForm, tax_country_code: e.target.value, tax_percentage: rate, sales_tax_percentage: rate, purchase_tax_percentage: rate }); }} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>{taxCountryOptions.map((country) => <option key={country.code} value={country.code}>{country.name} ({country.rate}%)</option>)}</select></label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>العملة الأساسية<select value={invoicingForm.currency_code} onChange={(e) => setInvoicingForm({ ...invoicingForm, currency_code: e.target.value })} required style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>{currencies.map((currency) => <option key={currency.code} value={currency.code}>{currency.name_ar} ({currency.code})</option>)}</select></label>
 
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>تقويم التقارير والفواتير<select value={invoicingForm.calendar_type} onChange={(e) => setInvoicingForm({ ...invoicingForm, calendar_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}><option value="gregorian">ميلادي</option><option value="hijri">هجري</option></select></label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>العملة الثانوية<select value={invoicingForm.secondary_currency_code} onChange={(e) => setInvoicingForm({ ...invoicingForm, secondary_currency_code: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}><option value="">اختياري</option>{currencies.map((currency) => <option key={currency.code} value={currency.code}>{currency.name_ar} ({currency.code})</option>)}</select></label>
 
-              <Input
-                label="ضريبة المبيعات (مخرجات) %"
-                type="number"
-                min="0"
-                step="0.1"
-                value={invoicingForm.sales_tax_percentage}
-                onChange={(e) => setInvoicingForm({ ...invoicingForm, sales_tax_percentage: e.target.value })}
-                required
-              />
+              <Input label="سعر الصرف" type="number" min="0.0001" step="0.0001" value={invoicingForm.exchange_rate} onChange={(e) => setInvoicingForm({ ...invoicingForm, exchange_rate: parseFloat(e.target.value) || 1.0 })} required />
 
-              <Input
-                label="ضريبة المشتريات (مدخلات قابلة للخصم) %"
-                type="number"
-                min="0"
-                step="0.1"
-                value={invoicingForm.purchase_tax_percentage}
-                onChange={(e) => setInvoicingForm({ ...invoicingForm, purchase_tax_percentage: e.target.value })}
-                required
-              />
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>تقويم التقارير والفواتير<select value={invoicingForm.calendar_type} onChange={(e) => setInvoicingForm({ ...invoicingForm, calendar_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}><option value="gregorian">ميلادي</option><option value="hijri">هجري</option><option value="both">كلاهما</option></select></label>
 
-              <Input
-                label={t('settings.invoicePrefixSales')}
-                value={invoicingForm.invoice_prefix_sales}
-                onChange={(e) => setInvoicingForm({ ...invoicingForm, invoice_prefix_sales: e.target.value })}
-                helperText="مثال: INV- ينتج عنها INV-2026-00001"
-              />
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>تنسيق التاريخ<select value={invoicingForm.date_format} onChange={(e) => setInvoicingForm({ ...invoicingForm, date_format: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}><option value="dd/MM/yyyy">يوم/شهر/سنة</option><option value="MM/dd/yyyy">شهر/يوم/سنة</option><option value="yyyy-MM-dd">سنة-شهر-يوم</option></select></label>
 
-              <Input
-                label={t('settings.invoicePrefixPurchase')}
-                value={invoicingForm.invoice_prefix_purchase}
-                onChange={(e) => setInvoicingForm({ ...invoicingForm, invoice_prefix_purchase: e.target.value })}
-                helperText="مثال: PO- ينتج عنها PO-2026-00001"
-              />
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>الخط<select value={invoicingForm.font_family} onChange={(e) => { setInvoicingForm({ ...invoicingForm, font_family: e.target.value }); document.documentElement.style.setProperty('--app-font-family', `'${e.target.value}', sans-serif`); }} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>{fonts.map((font) => <option key={font.code} value={font.code}>{font.name_ar}</option>)}</select></label>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>نوع الضريبة<select value={invoicingForm.tax_type} onChange={(e) => setInvoicingForm({ ...invoicingForm, tax_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}><option value="VAT">ضريبة القيمة المضافة</option><option value="GST">ضريبة السلع والخدمات</option><option value="SALES_TAX">ضريبة المبيعات</option><option value="WITHHOLDING">الخصم من المنبع</option></select></label>
+
+              <Input label="كود قالب الدليل المحاسبي" value={invoicingForm.coa_template_code} onChange={(e) => setInvoicingForm({ ...invoicingForm, coa_template_code: e.target.value })} helperText="اتركه فارغاً لاختيار تلقائي حسب الدولة" />
+
+              <Input label="ضريبة المبيعات (مخرجات) %" type="number" min="0" step="0.1" value={invoicingForm.sales_tax_percentage} onChange={(e) => setInvoicingForm({ ...invoicingForm, sales_tax_percentage: e.target.value })} required />
+
+              <Input label="ضريبة المشتريات (مدخلات قابلة للخصم) %" type="number" min="0" step="0.1" value={invoicingForm.purchase_tax_percentage} onChange={(e) => setInvoicingForm({ ...invoicingForm, purchase_tax_percentage: e.target.value })} required />
+
+              <Input label={t('settings.invoicePrefixSales')} value={invoicingForm.invoice_prefix_sales} onChange={(e) => setInvoicingForm({ ...invoicingForm, invoice_prefix_sales: e.target.value })} helperText="مثال: INV- ينتج عنها INV-2026-00001" />
+
+              <Input label={t('settings.invoicePrefixPurchase')} value={invoicingForm.invoice_prefix_purchase} onChange={(e) => setInvoicingForm({ ...invoicingForm, invoice_prefix_purchase: e.target.value })} helperText="مثال: PO- ينتج عنها PO-2026-00001" />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

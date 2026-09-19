@@ -30,6 +30,34 @@ function registerSettingsIPC(ipcMain) {
     }
   });
 
+  // Lookup tables
+  ipcMain.handle('countries:list', async () => {
+    try {
+      const countries = settingService.getCountries();
+      return { success: true, data: countries };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('currencies:list', async () => {
+    try {
+      const currencies = settingService.getCurrencies();
+      return { success: true, data: currencies };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('fonts:list', async () => {
+    try {
+      const fonts = settingService.getFonts();
+      return { success: true, data: fonts };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
   // Branches
   ipcMain.handle('branches:list', async () => {
     try {

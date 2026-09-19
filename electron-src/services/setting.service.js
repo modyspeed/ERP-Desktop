@@ -3,6 +3,7 @@ const path = require('path');
 const settingRepository = require('../repositories/setting.repository');
 const branchRepository = require('../repositories/branch.repository');
 const auditRepository = require('../repositories/audit.repository');
+const { getDatabase } = require('../database/db');
 
 class SettingService {
   getSettings() {
@@ -116,6 +117,21 @@ class SettingService {
     });
 
     return true;
+  }
+
+  getCountries() {
+    const db = getDatabase();
+    return db.prepare('SELECT * FROM countries WHERE is_active = 1 ORDER BY name_ar').all();
+  }
+
+  getCurrencies() {
+    const db = getDatabase();
+    return db.prepare('SELECT * FROM currencies WHERE is_active = 1 ORDER BY name_ar').all();
+  }
+
+  getFonts() {
+    const db = getDatabase();
+    return db.prepare('SELECT * FROM fonts WHERE is_active = 1 ORDER BY name_ar').all();
   }
 }
 
