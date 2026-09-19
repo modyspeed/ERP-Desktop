@@ -370,6 +370,8 @@ const SettingsPage = () => {
   const [countries, setCountries] = useState([]);
   const [currencies, setCurrencies] = useState([]);
   const [fonts, setFonts] = useState([]);
+  const [coaTemplates, setCoaTemplates] = useState([]);
+  const [selectedCoaTemplate, setSelectedCoaTemplate] = useState('');
 
   // Form states
   const [companyForm, setCompanyForm] = useState({
@@ -412,24 +414,24 @@ const SettingsPage = () => {
   const [deleteBranchId, setDeleteBranchId] = useState(null);
 
   const loadAccountingCatalogs = async () => {
-    const response = await window.api?.accounts?.catalogs();
-    let catalogs = response?.success ? response.data : [];
-    // Merge with local accountingDirectory for all countries
-    const localCatalogs = Object.entries(accountingDirectory).map(([code, dir]) => ({
-      id: code,
-      name: dir.name,
-      accounts_count: dir.accounts?.length || 0,
-      is_active: false,
-      country_code: code,
-    }));
-    // Combine and deduplicate by id
-    const combined = [...localCatalogs];
-    catalogs.forEach((c) => {
-      if (!combined.find((x) => x.id === c.id || x.id === String(c.id))) combined.push(c);
-    });
-    setAccountingCatalogs(combined);
-    const active = combined.find((catalog) => catalog.is_active);
-    if (active) setSelectedAccountingCatalog(String(active.id));
+    try {
+      // Load COA templates from JSON files
+      const coaTemplatesRes = await window.api.invoke('coa-templates:list');
+      if (coaTemplatesRes.success) {
+        setCoaTemplates(coaTemplatesRes.data);
+        setAccountingCatalogs(coaTemplatesRes.data.map(t => ({
+          id: t.id,
+          name: t.name,
+          country_code: t.country_code,
+          accounts_count: t.accounts_count,
+          is_active: t.is_active || false
+        })));
+        const active = coaTemplatesRes.data.find(t => t.is_active);
+        if (active) setSelectedCoaTemplate(active.id);
+      }
+    } catch (err) {
+      console.error('Failed to load COA templates:', err);
+    }
   };
 
   useEffect(() => { loadAccountingCatalogs(); }, []);
@@ -466,11 +468,25 @@ const SettingsPage = () => {
   };
 
   const applyAccountingCatalog = async () => {
-    if (!selectedAccountingCatalog) return toast.error('اختر دليلاً محاسبياً أولاً');
-    const dir = accountingDirectory[selectedAccountingCatalog];
-    if (!dir) return toast.error('الدليل المحاسبي غير موجود لهذا البلد');
-    const response = await window.api.accounts.applyCatalog(Number(selectedAccountingCatalog));
-    if (response?.success) { toast.success(response.message); loadAccountingCatalogs(); }
+    if (!selectedCoaTemplate) return toast.error('اختر دليلاً محاسبياً أولاً');
+    
+    // Check if there are existing accounts
+    const existingAccounts = await window.api.accounts.list({ limit: 1 });
+    if (existingAccounts?.success && existingAccounts.data?.total > 0) {
+      const confirmReplace = window.confirm(
+        'يوجد بالفعل حسابات في الدليل المحاسبي. تطبيق قالب جديد قد يؤدي إلى تكرار الحسابات أو تعارضها. هل تريد المتابعة؟'
+      );
+      if (!confirmReplace) return;
+    }
+    
+    const template = coaTemplates.find(t => t.id === selectedCoaTemplate);
+    if (!template) return toast.error('القالب المحاسبي غير موجود');
+    
+    const response = await window.api.accounts.applyCatalogFromTemplate(template);
+    if (response?.success) { 
+      toast.success(response.message); 
+      loadAccountingCatalogs(); 
+    }
     else toast.error(response?.error || 'تعذر تطبيق الدليل المحاسبي');
   };
 
@@ -509,8 +525,6 @@ const SettingsPage = () => {
         sales_tax_percentage: settings.sales_tax_percentage ?? settings.tax_percentage ?? 15.0,
         purchase_tax_percentage: settings.purchase_tax_percentage ?? settings.tax_percentage ?? 15.0,
         tax_enabled: settings.tax_enabled !== undefined ? settings.tax_enabled : 1,
-        tax_type: settings.tax_type || 'VAT',
-        coa_template_code: settings.coa_template_code || '',
       });
     }
   }, [settings]);
@@ -1012,14 +1026,16 @@ const SettingsPage = () => {
         <Card title="الدليل المحاسبي والقوالب">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
-              اختر قالباً مصرياً أو سعودياً، أو أنشئ دليلاً مخصصاً. تطبيق القالب يضيف الحسابات الناقصة فقط ولا يحذف حساباتك الحالية.
+              اختر قالباً محاسبياً جاهزاً (مصر/السعودية/عام) أو أنشئ دليلاً مخصصاً. 
+              <strong style={{ color: 'var(--primary-color)' }}>تنبيه:</strong> تطبيق قالب جديد سيضيف الحسابات المفقودة فقط.
+              إذا كانت هناك حسابات موجودة، سيطلب تأكيد قبل المتابعة.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', gap: '10px', alignItems: 'end' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
                 القالب المحاسبي
-                <select value={selectedAccountingCatalog} onChange={(event) => setSelectedAccountingCatalog(event.target.value)} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>
+                <select value={selectedCoaTemplate} onChange={(event) => setSelectedCoaTemplate(event.target.value)} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>
                   <option value="">اختر قالباً</option>
-                  {accountingCatalogs.map((catalog) => <option key={catalog.id} value={catalog.id}>{catalog.name} ({catalog.accounts_count} حساب)</option>)}
+                  {coaTemplates.map((catalog) => <option key={catalog.id} value={catalog.id}>{catalog.name} ({catalog.country_code}) - {catalog.accounts_count} حساب</option>)}
                 </select>
               </label>
               <Button icon={WandSparkles} onClick={applyAccountingCatalog}>تطبيق القالب</Button>

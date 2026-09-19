@@ -133,6 +133,8 @@ contextBridge.exposeInMainWorld('api', {
     catalogs: () => invokeWithUser('accounts:catalogs'),
     createCatalog: (data) => invokeWithUser('accounts:create-catalog', data),
     applyCatalog: (id) => invokeWithUser('accounts:apply-catalog', id),
+    applyCatalogFromTemplate: (template) => invokeWithUser('accounts:apply-catalog-from-template', template),
+    coaTemplates: () => invokeWithUser('coa-templates:list'),
   },
 
   categories: {

@@ -41,6 +41,30 @@ class AccountRepository extends BaseRepository {
       return catalog;
     })();
   }
+
+  applyCatalogFromTemplate(template) {
+    const db = this.db;
+    if (!template || !template.accounts || !template.accounts.length) {
+      throw new Error('القالب المحاسبي فارغ أو غير صالح');
+    }
+    return db.transaction(() => {
+      // Sort accounts by hierarchy (parents first)
+      const sortedAccounts = [...template.accounts].sort((a, b) => {
+        if (!a.parent_code && b.parent_code) return -1;
+        if (a.parent_code && !b.parent_code) return 1;
+        return 0;
+      });
+      
+      const insertAccount = db.prepare('INSERT OR IGNORE INTO chart_of_accounts (code, name, account_type, parent_id) VALUES (?, ?, ?, ?)');
+      
+      for (const account of sortedAccounts) {
+        const parent = account.parent_code ? db.prepare('SELECT id FROM chart_of_accounts WHERE code = ? AND is_deleted = 0').get(account.parent_code) : null;
+        insertAccount.run(account.code, account.name_ar, account.account_type, parent?.id || null);
+      }
+      
+      return { success: true, message: 'تم تطبيق القالب المحاسبي بنجاح' };
+    })();
+  }
 }
 
 module.exports = new AccountRepository();
