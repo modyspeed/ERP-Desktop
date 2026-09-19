@@ -30,12 +30,16 @@ class PurchaseOrderRepository extends BaseRepository {
   }
 
   getPurchaseOrder(id) {
-    return this.db.prepare(`
+    const po = this.db.prepare(`
       SELECT po.*, s.name AS supplier_name, s.phone AS supplier_phone, s.email AS supplier_email
       FROM purchase_orders po
       LEFT JOIN suppliers s ON s.id = po.supplier_id
       WHERE po.id = ? AND po.is_deleted = 0
     `).get(id);
+    if (po) {
+      po.items = this.getPurchaseOrderItems(id);
+    }
+    return po;
   }
 
   getPurchaseOrderItems(poId) {
@@ -47,14 +51,35 @@ class PurchaseOrderRepository extends BaseRepository {
     `).all(poId);
   }
 
-  savePurchaseOrder({ id, branch_id = 1, ...data }) {
-    const po = {
-      ...data,
-      branch_id,
-      total_amount: Number(data.total_amount || 0),
-      status: data.status || 'pending',
-    };
-    return id ? this.update(id, po) : this.create(po);
+  savePurchaseOrder({ id, branch_id = 1, supplier_id, date, notes, items = [], total_amount = 0, status = 'pending', created_by }) {
+    const db = getDatabase();
+    if (!supplier_id) throw new Error('المورد مطلوب');
+    if (!items || items.length === 0) throw new Error('يجب إضافة صنف واحد على الأقل');
+
+    const settings = db.prepare('SELECT invoice_prefix_purchase FROM company_settings LIMIT 1').get() || {};
+    const prefix = settings.invoice_prefix_purchase || 'PO-';
+
+    return db.transaction(() => {
+      let poId = id;
+      const poNumber = generateDocumentNumber('purchase_orders', 'po_number', prefix);
+
+      if (id) {
+        db.prepare('UPDATE purchase_orders SET supplier_id = ?, date = ?, notes = ?, total_amount = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_deleted = 0')
+          .run(supplier_id, date, notes || null, total_amount, status, id);
+        db.prepare('DELETE FROM purchase_order_items WHERE po_id = ?').run(id);
+      } else {
+        const result = db.prepare('INSERT INTO purchase_orders (branch_id, supplier_id, po_number, date, notes, total_amount, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+          .run(branch_id, supplier_id, poNumber, date, notes || null, total_amount, status, created_by || null);
+        poId = result.lastInsertRowid;
+      }
+
+      const insertItem = db.prepare('INSERT INTO purchase_order_items (po_id, product_id, qty, unit_cost) VALUES (?, ?, ?, ?)');
+      for (const item of items) {
+        insertItem.run(poId, item.product_id, item.qty, item.unit_cost || 0);
+      }
+
+      return this.getPurchaseOrder(poId);
+    })();
   }
 
   convertToInvoice(poId, data = {}) {

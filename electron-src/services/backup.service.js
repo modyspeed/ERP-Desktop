@@ -2,6 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const { app } = require('electron');
 const { getDatabase, getDbPath } = require('../database/db');
+const auditRepository = require('../repositories/audit.repository');
 
 class BackupService {
   getBackupDir() {
@@ -20,7 +21,7 @@ class BackupService {
     }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
 
-  backup() {
+  backup(currentUserId) {
     const backupDir = this.getBackupDir();
     if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
 
@@ -36,10 +37,19 @@ class BackupService {
     sourceDb.backup(backupDb);
     backupDb.close();
 
+    auditRepository.log({
+      userId: currentUserId || null,
+      module: 'backup',
+      action: 'create',
+      recordId: null,
+      oldValue: null,
+      newValue: { file_name: backupFileName, size: fs.statSync(backupPath).size },
+    });
+
     return { file_name: backupFileName, file_path: backupPath, size: fs.statSync(backupPath).size, created_at: new Date().toISOString() };
   }
 
-  restore(backupPath) {
+  restore(backupPath, currentUserId) {
     if (!fs.existsSync(backupPath)) throw new Error('ملف النسخ الاحتياطي غير موجود');
 
     const dbPath = getDbPath();
@@ -50,12 +60,31 @@ class BackupService {
     backupDb.backup(targetDb);
     backupDb.close();
 
+    auditRepository.log({
+      userId: currentUserId || null,
+      module: 'backup',
+      action: 'restore',
+      recordId: null,
+      oldValue: null,
+      newValue: { backup_path: backupPath, restored_at: new Date().toISOString() },
+    });
+
     return { success: true, restored_at: new Date().toISOString() };
   }
 
-  deleteBackup(backupPath) {
+  deleteBackup(backupPath, currentUserId) {
     if (!fs.existsSync(backupPath)) throw new Error('ملف النسخ الاحتياطي غير موجود');
     fs.unlinkSync(backupPath);
+
+    auditRepository.log({
+      userId: currentUserId || null,
+      module: 'backup',
+      action: 'delete',
+      recordId: null,
+      oldValue: { file_path: backupPath },
+      newValue: { deleted: true },
+    });
+
     return { success: true };
   }
 

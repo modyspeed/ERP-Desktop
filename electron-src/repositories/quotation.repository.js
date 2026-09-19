@@ -29,14 +29,35 @@ class QuotationRepository extends BaseRepository {
     };
   }
 
-  saveQuotation({ id, branch_id = 1, ...data }) {
-    const quotation = {
-      ...data,
-      branch_id,
-      total_amount: Number(data.total_amount || 0),
-      status: data.status || 'draft',
-    };
-    return id ? this.update(id, quotation) : this.create(quotation);
+  saveQuotation({ id, branch_id = 1, customer_id, date, expiry_date, notes, items = [], total_amount = 0, status = 'draft', created_by }) {
+    const db = getDatabase();
+    if (!customer_id) throw new Error('العميل مطلوب');
+    if (!items || items.length === 0) throw new Error('يجب إضافة صنف واحد على الأقل');
+
+    const settings = db.prepare('SELECT invoice_prefix_sales FROM company_settings LIMIT 1').get() || {};
+    const prefix = settings.invoice_prefix_sales || 'QUO-';
+
+    return db.transaction(() => {
+      let qId = id;
+      const qNumber = generateDocumentNumber('quotations', 'quote_number', prefix);
+
+      if (id) {
+        db.prepare('UPDATE quotations SET customer_id = ?, date = ?, expiry_date = ?, notes = ?, total_amount = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_deleted = 0')
+          .run(customer_id, date, expiry_date || null, notes || null, total_amount, status, id);
+        db.prepare('DELETE FROM quotation_items WHERE quotation_id = ?').run(id);
+      } else {
+        const result = db.prepare('INSERT INTO quotations (branch_id, customer_id, quote_number, date, expiry_date, notes, total_amount, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          .run(branch_id, customer_id, qNumber, date, expiry_date || null, notes || null, total_amount, status, created_by || null);
+        qId = result.lastInsertRowid;
+      }
+
+      const insertItem = db.prepare('INSERT INTO quotation_items (quotation_id, product_id, qty, unit_price, discount, tax) VALUES (?, ?, ?, ?, ?, ?)');
+      for (const item of items) {
+        insertItem.run(qId, item.product_id, item.qty, item.unit_price || 0, item.discount || 0, item.tax || 0);
+      }
+
+      return this.getQuotation(qId);
+    })();
   }
 
   getQuotationItems(quotationId) {
@@ -49,12 +70,16 @@ class QuotationRepository extends BaseRepository {
   }
 
   getQuotation(id) {
-    return this.db.prepare(`
+    const q = this.db.prepare(`
       SELECT q.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone, c.address AS customer_address
       FROM quotations q
       LEFT JOIN customers c ON c.id = q.customer_id
       WHERE q.id = ? AND q.is_deleted = 0
     `).get(id);
+    if (q) {
+      q.items = this.getQuotationItems(id);
+    }
+    return q;
   }
 
   convertToInvoice(quotationId, data = {}) {

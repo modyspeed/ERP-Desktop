@@ -1,32 +1,58 @@
 const backupService = require('../services/backup.service');
+const permissionMiddleware = require('./permission.middleware');
 
 function registerBackupIpc(ipcMain) {
   ipcMain.handle('backup:list', async () => {
     try { return { success: true, data: backupService.listBackups() }; }
     catch (err) { return { success: false, error: err.message }; }
   });
-  ipcMain.handle('backup:create', async () => {
-    try { return { success: true, data: backupService.backup(), message: 'تم إنشاء النسخة الاحتياطية بنجاح' }; }
-    catch (err) { return { success: false, error: err.message }; }
-  });
-  ipcMain.handle('backup:restore', async (event, filePath) => {
-    try { return { success: true, data: backupService.restore(filePath), message: 'تم استعادة النسخة الاحتياطية بنجاح' }; }
-    catch (err) { return { success: false, error: err.message }; }
-  });
-  ipcMain.handle('backup:delete', async (event, filePath) => {
-    try { backupService.deleteBackup(filePath); return { success: true, message: 'تم حذف النسخة الاحتياطية' }; }
-    catch (err) { return { success: false, error: err.message }; }
-  });
-  ipcMain.handle('backup:schedule', async (event, { intervalMinutes }) => {
+  ipcMain.handle('backup:create', async (event, data) => {
+    const userId = data?._userId || null;
+    if (!userId) return { success: false, error: 'غير مصرح لك', code: 'UNAUTHORIZED' };
+    if (!permissionMiddleware.hasPermission(userId, 'backup', 'create') && !permissionMiddleware.hasPermission(userId, 'backup', 'manage')) {
+      return { success: false, error: 'لا تمتلك صلاحية إنشاء نسخ افتراضي', code: 'FORBIDDEN' };
+    }
     try {
-      // Schedule backup using setInterval
-      const interval = setInterval(() => {
-        try { backupService.backup(); } catch (e) { console.error('Scheduled backup failed:', e); }
-      }, intervalMinutes * 60 * 1000);
-      return { success: true, intervalId: interval, message: `تم جدولة النسخ الاحتياطي كل ${intervalMinutes} دقائق` };
+      const result = backupService.backup(userId);
+      return { success: true, data: result, message: 'تم انشاء النسخ Backup' };
     } catch (err) { return { success: false, error: err.message }; }
   });
-  return { success: true };
+  ipcMain.handle('backup:restore', async (event, data) => {
+    const userId = data?._userId || null;
+    if (!userId) return { success: false, error: 'غير مصرح لك', code: 'UNAUTHORIZED' };
+    if (!permissionMiddleware.hasPermission(userId, 'backup', 'restore') && !permissionMiddleware.hasPermission(userId, 'backup', 'manage')) {
+      return { success: false, error: 'لا تمتلك صلاحية استعادة النسخ Backup', code: 'FORBIDDEN' };
+    }
+    try {
+      const result = backupService.restore(data.filePath, userId);
+      return { success: true, data: result, message: 'تمت استعادة النسخ Backup' };
+    } catch (err) { return { success: false, error: err.message }; }
+  });
+  ipcMain.handle('backup:delete', async (event, data) => {
+    const userId = data?._userId || null;
+    if (!userId) return { success: false, error: 'غير مصرح لك', code: 'UNAUTHORIZED' };
+    if (!permissionMiddleware.hasPermission(userId, 'backup', 'delete') && !permissionMiddleware.hasPermission(userId, 'backup', 'manage')) {
+      return { success: false, error: 'لا تمتلك صلاحية حذف النسخ Backup', code: 'FORBIDDEN' };
+    }
+    try {
+      const result = backupService.deleteBackup(data.filePath, userId);
+      return { success: true, data: result, message: 'تم حذف النسخ Backup' };
+    } catch (err) { return { success: false, error: err.message }; }
+  });
+  ipcMain.handle('backup:schedule', async (event, data) => {
+    const userId = data?._userId || null;
+    if (!userId) return { success: false, error: 'غير مصرح لك', code: 'UNAUTHORIZED' };
+    if (!permissionMiddleware.hasPermission(userId, 'backup', 'manage')) {
+      return { success: false, error: 'لا تمتلك صلاحية جدولة النسخ Backup', code: 'FORBIDDEN' };
+    }
+    try {
+      const { intervalMinutes = 60 } = data || {};
+      const intervalId = setInterval(() => {
+        try { backupService.backup(userId); } catch {}
+      }, intervalMinutes * 60 * 1000);
+      return { success: true, intervalId, message: 'تم تفعيل جدول النسخ Backup' };
+    } catch (err) { return { success: false, error: err.message }; }
+  });
 }
 
 module.exports = registerBackupIpc;
