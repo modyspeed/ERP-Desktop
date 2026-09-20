@@ -1,6 +1,6 @@
 const BaseRepository = require('./base.repository');
 const { getDatabase } = require('../database/db');
-const { generateDocumentNumber } = require('../utils/numbering');
+const { resolveAccount, createJournalEntry } = require('../utils/journal');
 
 class HrRepository extends BaseRepository {
   constructor() {
@@ -104,43 +104,50 @@ class HrRepository extends BaseRepository {
     return id ? this.update(id, leave) : this.create(leave);
   }
 
-  generatePayroll({ branch_id = 1, employee_id, month, year, allowances = 0, deductions = 0 }) {
+  generatePayroll({ branch_id = 1, employee_id, month, year, allowances = 0, deductions = 0, currentUserId }) {
     const db = getDatabase();
     const employee = db.prepare('SELECT salary_base, full_name FROM employees WHERE id = ? AND is_active = 1').get(employee_id);
     if (!employee) throw new Error('الموظف غير موجود أو معطل');
-    const existing = db.prepare('SELECT id FROM payrolls WHERE employee_id = ? AND month = ?').get(employee_id, month);
+    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+    const existing = db.prepare('SELECT id FROM payrolls WHERE employee_id = ? AND month = ?').get(employee_id, monthKey);
     if (existing) throw new Error('كشوف الرواتب لهذا الشهر موجودة بالفعل');
 
-    const netSalary = Number(employee.salary_base) + Number(allowances || 0) - Number(deductions || 0);
+    const baseSalary = Number(employee.salary_base || 0);
+    const totalAllowances = Number(allowances || 0);
+    const totalDeductions = Number(deductions || 0);
+    const netSalary = baseSalary + totalAllowances - totalDeductions;
 
     return db.transaction(() => {
-      const payroll = db.prepare('INSERT INTO payrolls (branch_id, employee_id, month, base_salary, allowances, deductions, net_salary, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, \'draft\', CURRENT_TIMESTAMP)').run(branch_id, employee_id, month, employee.salary_base, allowances, deductions, netSalary);
+      const payroll = db.prepare('INSERT INTO payrolls (branch_id, employee_id, month, base_salary, allowances, deductions, net_salary, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, \'draft\', CURRENT_TIMESTAMP)').run(branch_id, employee_id, monthKey, baseSalary, totalAllowances, totalDeductions, netSalary);
 
-      const entryNumber = generateDocumentNumber('journal_entries', 'entry_number', 'JE-');
-      const description = `كشف رواتب - ${employee.full_name} - ${year}-${String(month).padStart(2, '0')}`;
-      const entryId = db.prepare('INSERT INTO journal_entries (branch_id, entry_number, date, description, reference_type, reference_id, is_posted, created_by) VALUES (?, ?, date(\'now\'), ?, ?, ?, 0, ?)').run(branch_id, entryNumber, description, 'payroll', payroll.lastInsertRowid, null);
+      // Balanced payroll entry: gross expense (debit) = deductions + net payable (credit).
+      // Reuses the shared createJournalEntry helper which rejects unbalanced lines.
+      const salaryAccount = resolveAccount(db, '6110', 'expense', 'رواتب');
+      const allowancesAccount = resolveAccount(db, '6120', 'expense', 'بدلات');
+      const salaryLiabilityAccount = resolveAccount(db, '2400', 'liability', 'رواتب');
+      let deductionsAccount = resolveAccount(db, null, 'liability', 'خصومات');
+      if (!deductionsAccount) deductionsAccount = resolveAccount(db, '2500', 'liability', 'مستحقات أخرى');
 
-      const salaryAccount = db.prepare("SELECT id FROM chart_of_accounts WHERE account_type = 'expense' AND name LIKE '%رواتب%'").get();
-      const allowancesAccount = db.prepare("SELECT id FROM chart_of_accounts WHERE account_type = 'expense' AND name LIKE '%بدلات%'").get();
-      const deductionsAccount = db.prepare("SELECT id FROM chart_of_accounts WHERE account_type = 'expense' AND name LIKE '%خصومات%'").get();
-      const salaryLiabilityAccount = db.prepare("SELECT id FROM chart_of_accounts WHERE account_type = 'liability' AND name LIKE '%رواتب%'").get();
+      const journalLines = [];
+      if (salaryAccount) journalLines.push({ account_id: salaryAccount, debit: baseSalary, credit: 0 });
+      if (allowancesAccount && totalAllowances) journalLines.push({ account_id: allowancesAccount, debit: totalAllowances, credit: 0 });
+      if (deductionsAccount && totalDeductions) journalLines.push({ account_id: deductionsAccount, debit: 0, credit: totalDeductions });
+      if (salaryLiabilityAccount) journalLines.push({ account_id: salaryLiabilityAccount, debit: 0, credit: netSalary });
 
-      const lines = [];
-      if (salaryAccount) lines.push({ account_id: salaryAccount.id, debit: employee.salary_base, credit: 0 });
-      if (allowancesAccount && allowances) lines.push({ account_id: allowancesAccount.id, debit: allowances, credit: 0 });
-      if (deductionsAccount && deductions) lines.push({ account_id: deductionsAccount.id, debit: deductions, credit: 0 });
-      if (salaryLiabilityAccount) lines.push({ account_id: salaryLiabilityAccount.id, debit: 0, credit: netSalary });
+      const journal = createJournalEntry(db, {
+        branch_id,
+        description: `كشف رواتب - ${employee.full_name} - ${monthKey}`,
+        reference_type: 'payroll',
+        reference_id: payroll.lastInsertRowid,
+        lines: journalLines,
+        created_by: currentUserId || null,
+      });
 
-      if (lines.length) {
-        const insertLine = db.prepare('INSERT INTO journal_entry_lines (journal_entry_id, account_id, debit, credit) VALUES (?, ?, ?, ?)');
-        for (const line of lines) {
-          insertLine.run(entryId.lastInsertRowid, line.account_id, line.debit, line.credit);
-        }
+      if (journal) {
+        db.prepare('UPDATE payrolls SET journal_entry_id = ?, status = \'posted\' WHERE id = ?').run(journal.id, payroll.lastInsertRowid);
       }
 
-      db.prepare('UPDATE payrolls SET journal_entry_id = ?, status = \'posted\' WHERE id = ?').run(entryId.lastInsertRowid, payroll.lastInsertRowid);
-
-      return { payroll: db.prepare('SELECT * FROM payrolls WHERE id = ?').get(payroll.lastInsertRowid), journal_entry_id: entryId.lastInsertRowid, entry_number: entryNumber };
+      return { payroll: db.prepare('SELECT * FROM payrolls WHERE id = ?').get(payroll.lastInsertRowid), journal_entry_id: journal ? journal.id : null, entry_number: journal ? journal.entry_number : null };
     })();
   }
 }

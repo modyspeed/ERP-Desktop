@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Check, Search } from "lucide-react";
 import { useSettings } from "../../../context/SettingsContext";
 import { useToast } from "../../../context/ToastContext";
 import Button from "../../../components/ui/Button";
@@ -12,7 +12,6 @@ import Badge from "../../../components/ui/Badge";
 
 const HrAttendancePage = () => {
   const { currentBranch } = useSettings();
-  const { user } = useAuth();
   const toast = useToast();
   const [attendance, setAttendance] = useState({ items: [], total: 0 });
   const [summary, setSummary] = useState({ total_days: 0, present_days: 0, absent_days: 0, leave_days: 0 });
@@ -86,6 +85,14 @@ const HrAttendancePage = () => {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
           <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>الموظف<Select value={selectedEmployeeId} onChange={(e) => setSelectedEmployeeId(e.target.value)} options={[{ value: "", label: "الكل" }, ...employees.map((emp) => ({ value: String(emp.id), label: emp.full_name }))]} /></label>
           <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>التاريخ<Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        </div>
+      </Card>
+      <Card title="تسجيل الحضور والانصراف">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, auto))", gap: 14, alignItems: "end" }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>الحضور (دوام)<Input type="time" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} /></label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>الانصراف<Input type="time" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /></label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>الحالة<Select value={status} onChange={(e) => setStatus(e.target.value)} options={[{ value: "present", label: "حاضر" }, { value: "absent", label: "غائب" }, { value: "leave", label: "إجازة" }]} /></label>
+          <Button icon={Check} onClick={checkInOut} loading={saving}>تسجيل الحضور</Button>
         </div>
       </Card>
       {selectedEmployeeId && todayAttendance && (

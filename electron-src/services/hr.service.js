@@ -92,9 +92,9 @@ class HrService {
       userId: data.currentUserId || null,
       module: 'hr',
       action: 'create',
-      recordId: result.id,
+      recordId: result.payroll?.id,
       oldValue: null,
-      newValue: { id: result.id, employee_id: data.employee_id, month: data.month, net_salary: result.net_salary },
+      newValue: { id: result.payroll?.id, employee_id: data.employee_id, month: result.payroll?.month, net_salary: result.payroll?.net_salary, journal_entry_id: result.journal_entry_id },
     });
 
     return result;
