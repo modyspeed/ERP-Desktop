@@ -440,8 +440,14 @@ const SettingsPage = () => {
           accounts_count: t.accounts_count,
           is_active: t.is_active || false
         })));
-        const active = coaTemplatesRes.data.find(t => t.is_active);
-        if (active) setSelectedCoaTemplate(active.id);
+        const suggestedTemplate = coaTemplatesRes.data.find(
+          template => template.country_code?.toUpperCase() === invoicingForm.country_code.toUpperCase()
+        );
+        setSelectedCoaTemplate(current => current || suggestedTemplate?.id || '');
+        setInvoicingForm(current => ({
+          ...current,
+          coa_template_code: current.coa_template_code || suggestedTemplate?.id || '',
+        }));
       }
     } catch (err) {
       console.error('Failed to load COA templates:', err);
@@ -449,6 +455,21 @@ const SettingsPage = () => {
   };
 
   useEffect(() => { loadAccountingCatalogs(); }, []);
+
+  useEffect(() => {
+    if (!invoicingForm.country_code || !coaTemplates.length) return;
+
+    const suggestedTemplate = coaTemplates.find(
+      (template) => template.country_code?.toUpperCase() === invoicingForm.country_code.toUpperCase()
+    );
+    if (!suggestedTemplate) return;
+
+    setSelectedCoaTemplate(suggestedTemplate.id);
+    setInvoicingForm((current) => ({
+      ...current,
+      coa_template_code: suggestedTemplate.id,
+    }));
+  }, [invoicingForm.country_code, coaTemplates]);
 
   useEffect(() => {
     const fetchLookups = async () => {
