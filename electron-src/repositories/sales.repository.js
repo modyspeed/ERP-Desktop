@@ -39,7 +39,7 @@ class SalesRepository extends BaseRepository {
     const db = getDatabase();
     if (!warehouse_id || !items?.length) throw new Error('المستودع والأصناف مطلوبان');
 
-    const settings = db.prepare('SELECT invoice_prefix_sales, tax_enabled, tax_percentage FROM company_settings LIMIT 1').get() || {};
+    const settings = db.prepare('SELECT invoice_prefix_sales, tax_enabled, tax_percentage, sales_tax_percentage, tax_country_code FROM company_settings LIMIT 1').get() || {};
     const prefix = settings.invoice_prefix_sales || 'INV-';
     const taxRate = settings.tax_enabled ? Number(settings.sales_tax_percentage ?? settings.tax_percentage ?? 0) : 0;
     const productQuery = db.prepare('SELECT id, name, cost_price, sale_price FROM products WHERE id = ? AND branch_id = ? AND is_deleted = 0');

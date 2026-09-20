@@ -1127,62 +1127,65 @@ const SettingsPage = () => {
               </div>
             </div>
 
-            <Modal isOpen={addTaxModalOpen} onClose={() => setAddTaxModalOpen(false)} title="إضافة ضريبة جديدة">
-              <form onSubmit={createTaxRule} style={{ display: 'grid', gap: '14px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                  <Input label="اسم الضريبة" required value={addTaxForm.name} onChange={(e) => setAddTaxForm({ ...addTaxForm, name: e.target.value })} />
-                  <Input label="اسم مختصر" value={addTaxForm.short_name} onChange={(e) => setAddTaxForm({ ...addTaxForm, short_name: e.target.value })} helperText="مثال: VAT، GST" />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>نوع المعاملة
-                    <select value={addTaxForm.transaction_type} onChange={(e) => setAddTaxForm({ ...addTaxForm, transaction_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>
-                      <option value="sale">مبيعات</option>
-                      <option value="purchase">مشتريات</option>
-                      <option value="service">خدمات</option>
-                      <option value="consulting">استشارات</option>
-                      <option value="all">الكل</option>
-                    </select>
-                  </label>
-                  <Input label="النسبة %" type="number" min="0" step="0.1" required value={addTaxForm.rate} onChange={(e) => setAddTaxForm({ ...addTaxForm, rate: e.target.value })} />
-                </div>
-
-                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>نوع الضريبة
-                  <input list="add-tax-type-datalist" value={addTaxForm.tax_type} onChange={(e) => setAddTaxForm({ ...addTaxForm, tax_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }} />
-                  <datalist id="add-tax-type-datalist">{taxTypeCatalog.map((type) => <option key={type} value={type} />)}</datalist>
-                </label>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                  <Input label="تاريخ بدء السريان" type="date" value={addTaxForm.effective_from} onChange={(e) => setAddTaxForm({ ...addTaxForm, effective_from: e.target.value })} />
-                  <Input label="تاريخ انتهاء السريان" type="date" value={addTaxForm.effective_to} onChange={(e) => setAddTaxForm({ ...addTaxForm, effective_to: e.target.value })} helperText="اتركه فارغاً إذا كانت غير منتهية" />
-                </div>
-
-                <Input label="ملاحظات" value={addTaxForm.notes} onChange={(e) => setAddTaxForm({ ...addTaxForm, notes: e.target.value })} />
-
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={addTaxForm.is_default} onChange={(e) => setAddTaxForm({ ...addTaxForm, is_default: e.target.checked })} style={{ width: '16px', height: '16px', accentColor: 'var(--primary-color)' }} />
-                    ضريبة افتراضية
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={addTaxForm.is_enabled} onChange={(e) => setAddTaxForm({ ...addTaxForm, is_enabled: e.target.checked })} style={{ width: '16px', height: '16px', accentColor: 'var(--primary-color)' }} />
-                    مفعلة
-                  </label>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                  <Button variant="secondary" onClick={() => setAddTaxModalOpen(false)}>إلغاء</Button>
-                  <Button type="submit" icon={Plus}>إضافة الضريبة</Button>
-                </div>
-              </form>
-            </Modal>
-
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <Button type="submit" variant="primary" icon={Save} loading={loading}>
                 {t('common.save')}
               </Button>
             </div>
           </form>
+
+          {/* NOTE: this modal must stay OUTSIDE the invoicing <form> above.
+              Nesting <form> inside <form> is invalid and silently breaks the
+              submit handler (createTaxRule) so new taxes never get saved. */}
+          <Modal isOpen={addTaxModalOpen} onClose={() => setAddTaxModalOpen(false)} title="إضافة ضريبة جديدة">
+            <form onSubmit={createTaxRule} style={{ display: 'grid', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <Input label="اسم الضريبة" required value={addTaxForm.name} onChange={(e) => setAddTaxForm({ ...addTaxForm, name: e.target.value })} />
+                <Input label="اسم مختصر" value={addTaxForm.short_name} onChange={(e) => setAddTaxForm({ ...addTaxForm, short_name: e.target.value })} helperText="مثال: VAT، GST" />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>نوع المعاملة
+                  <select value={addTaxForm.transaction_type} onChange={(e) => setAddTaxForm({ ...addTaxForm, transaction_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>
+                    <option value="sale">مبيعات</option>
+                    <option value="purchase">مشتريات</option>
+                    <option value="service">خدمات</option>
+                    <option value="consulting">استشارات</option>
+                    <option value="all">الكل</option>
+                  </select>
+                </label>
+                <Input label="النسبة %" type="number" min="0" step="0.1" required value={addTaxForm.rate} onChange={(e) => setAddTaxForm({ ...addTaxForm, rate: e.target.value })} />
+              </div>
+
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>نوع الضريبة
+                <input list="add-tax-type-datalist" value={addTaxForm.tax_type} onChange={(e) => setAddTaxForm({ ...addTaxForm, tax_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }} />
+                <datalist id="add-tax-type-datalist">{taxTypeCatalog.map((type) => <option key={type} value={type} />)}</datalist>
+              </label>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <Input label="تاريخ بدء السريان" type="date" value={addTaxForm.effective_from} onChange={(e) => setAddTaxForm({ ...addTaxForm, effective_from: e.target.value })} />
+                <Input label="تاريخ انتهاء السريان" type="date" value={addTaxForm.effective_to} onChange={(e) => setAddTaxForm({ ...addTaxForm, effective_to: e.target.value })} helperText="اتركه فارغاً إذا كانت غير منتهية" />
+              </div>
+
+              <Input label="ملاحظات" value={addTaxForm.notes} onChange={(e) => setAddTaxForm({ ...addTaxForm, notes: e.target.value })} />
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={addTaxForm.is_default} onChange={(e) => setAddTaxForm({ ...addTaxForm, is_default: e.target.checked })} style={{ width: '16px', height: '16px', accentColor: 'var(--primary-color)' }} />
+                  ضريبة افتراضية
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={addTaxForm.is_enabled} onChange={(e) => setAddTaxForm({ ...addTaxForm, is_enabled: e.target.checked })} style={{ width: '16px', height: '16px', accentColor: 'var(--primary-color)' }} />
+                  مفعلة
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <Button variant="secondary" onClick={() => setAddTaxModalOpen(false)}>إلغاء</Button>
+                <Button type="submit" icon={Plus}>إضافة الضريبة</Button>
+              </div>
+            </form>
+          </Modal>
         </Card>
       )}
 
