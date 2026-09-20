@@ -146,6 +146,14 @@ contextBridge.exposeInMainWorld('api', {
   taxes: {
     list: (params) => invokeWithUser('taxes:list', params),
     update: (data) => invokeWithUser('taxes:update', data),
+    create: (data) => invokeWithUser('taxes:create', data),
+    delete: (params) => invokeWithUser('taxes:delete', params),
+    taxTypes: () => invokeWithUser('taxes:tax-types'),
+    templates: {
+      list: () => invokeWithUser('tax-templates:list'),
+      load: (countryCode) => invokeWithUser('tax-templates:load', countryCode),
+      apply: (countryCode) => invokeWithUser('tax-templates:apply', countryCode),
+    },
   },
 
   backup: {

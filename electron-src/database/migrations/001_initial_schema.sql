@@ -486,12 +486,51 @@ CREATE TABLE IF NOT EXISTS tax_rules (
   name TEXT NOT NULL,
   short_name TEXT,
   rate REAL DEFAULT 0,
+  tax_type TEXT NOT NULL DEFAULT 'vat',
+  effective_from DATE,
+  effective_to DATE,
+  is_default INTEGER DEFAULT 0,
   calculation_method TEXT NOT NULL DEFAULT 'additive',
   is_enabled INTEGER DEFAULT 1,
   notes TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(country_code, transaction_type, name)
+);
+
+-- 12.13 Tax Rates (Multi-Country Tax Templates)
+CREATE TABLE IF NOT EXISTS tax_rates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  country_code TEXT NOT NULL,
+  tax_code TEXT NOT NULL,
+  name_ar TEXT NOT NULL,
+  name_en TEXT NOT NULL,
+  tax_type TEXT NOT NULL CHECK (tax_type IN ('vat', 'gst', 'sales_tax', 'withholding', 'other')),
+  rate_percentage REAL NOT NULL DEFAULT 0,
+  applies_to TEXT NOT NULL CHECK (applies_to IN ('sales', 'purchases', 'both')),
+  is_default INTEGER DEFAULT 0,
+  is_withholding INTEGER DEFAULT 0,
+  effective_from DATE NOT NULL,
+  effective_to DATE,
+  is_active INTEGER DEFAULT 1,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(country_code, tax_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tax_rates_country ON tax_rates(country_code);
+CREATE INDEX IF NOT EXISTS idx_tax_rates_type ON tax_rates(tax_type);
+CREATE INDEX IF NOT EXISTS idx_tax_rates_applies ON tax_rates(applies_to);
+CREATE INDEX IF NOT EXISTS idx_tax_rates_effective ON tax_rates(effective_from, effective_to);
+
+CREATE TABLE IF NOT EXISTS product_tax_class (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  product_id INTEGER NOT NULL,
+  tax_rate_id INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  FOREIGN KEY (tax_rate_id) REFERENCES tax_rates(id) ON DELETE RESTRICT,
+  UNIQUE(product_id, tax_rate_id)
 );
 
 CREATE TABLE IF NOT EXISTS journal_entries (

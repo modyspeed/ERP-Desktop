@@ -9,7 +9,7 @@ try {
 } catch (e) {
   electronApp = null;
 }
-const { runSeeders, runDemoSeeds, runAccountingCatalogSeeds, runTaxRuleSeeds, runDemoInvoiceSeeds } = require('./seeders/001_initial_seeds');
+const { runSeeders, runDemoSeeds, runAccountingCatalogSeeds, runTaxRuleSeeds, runTaxTemplateSeeds, runDemoInvoiceSeeds } = require('./seeders/001_initial_seeds');
 
 let dbInstance = null;
 
@@ -85,6 +85,59 @@ function initDatabase() {
     if (!salesInvoiceColumns.includes('tax_details')) dbInstance.exec('ALTER TABLE sales_invoices ADD COLUMN tax_details TEXT');
     const purchaseInvoiceColumns = dbInstance.prepare('PRAGMA table_info(purchase_invoices)').all().map((column) => column.name);
     if (!purchaseInvoiceColumns.includes('tax_details')) dbInstance.exec('ALTER TABLE purchase_invoices ADD COLUMN tax_details TEXT');
+    
+    // Phase 2: Extend tax_rules with tax_type, effective_from, effective_to, is_default
+    const taxRulesColumns = dbInstance.prepare('PRAGMA table_info(tax_rules)').all().map((column) => column.name);
+    if (!taxRulesColumns.includes('tax_type')) {
+      dbInstance.exec("ALTER TABLE tax_rules ADD COLUMN tax_type TEXT NOT NULL DEFAULT 'vat'");
+    }
+    if (!taxRulesColumns.includes('effective_from')) {
+      dbInstance.exec('ALTER TABLE tax_rules ADD COLUMN effective_from DATE');
+    }
+    if (!taxRulesColumns.includes('effective_to')) {
+      dbInstance.exec('ALTER TABLE tax_rules ADD COLUMN effective_to DATE');
+    }
+    if (!taxRulesColumns.includes('is_default')) {
+      dbInstance.exec('ALTER TABLE tax_rules ADD COLUMN is_default INTEGER DEFAULT 0');
+    }
+    
+    // Phase 3: Tax rates and product_tax_class tables
+    const tables = dbInstance.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('tax_rates', 'product_tax_class')").all().map(t => t.name);
+    if (!tables.includes('tax_rates')) {
+      dbInstance.exec(`CREATE TABLE IF NOT EXISTS tax_rates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        country_code TEXT NOT NULL,
+        tax_code TEXT NOT NULL,
+        name_ar TEXT NOT NULL,
+        name_en TEXT NOT NULL,
+        tax_type TEXT NOT NULL CHECK (tax_type IN ('vat', 'gst', 'sales_tax', 'withholding', 'other')),
+        rate_percentage REAL NOT NULL DEFAULT 0,
+        applies_to TEXT NOT NULL CHECK (applies_to IN ('sales', 'purchases', 'both')),
+        is_default INTEGER DEFAULT 0,
+        is_withholding INTEGER DEFAULT 0,
+        effective_from DATE NOT NULL,
+        effective_to DATE,
+        is_active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(country_code, tax_code)
+      )`);
+      dbInstance.exec('CREATE INDEX IF NOT EXISTS idx_tax_rates_country ON tax_rates(country_code)');
+      dbInstance.exec('CREATE INDEX IF NOT EXISTS idx_tax_rates_type ON tax_rates(tax_type)');
+      dbInstance.exec('CREATE INDEX IF NOT EXISTS idx_tax_rates_applies ON tax_rates(applies_to)');
+      dbInstance.exec('CREATE INDEX IF NOT EXISTS idx_tax_rates_effective ON tax_rates(effective_from, effective_to)');
+    }
+    if (!tables.includes('product_tax_class')) {
+      dbInstance.exec(`CREATE TABLE IF NOT EXISTS product_tax_class (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        tax_rate_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+        FOREIGN KEY (tax_rate_id) REFERENCES tax_rates(id) ON DELETE RESTRICT,
+        UNIQUE(product_id, tax_rate_id)
+      )`);
+    }
   }
 
   // Run initial seeders
@@ -93,6 +146,7 @@ function initDatabase() {
     runDemoSeeds(dbInstance);
     runAccountingCatalogSeeds(dbInstance);
     runTaxRuleSeeds(dbInstance);
+    runTaxTemplateSeeds(dbInstance);
     runDemoInvoiceSeeds(dbInstance);
   } catch (err) {
     console.error('Error running seeders:', err);

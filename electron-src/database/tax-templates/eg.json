@@ -1,0 +1,150 @@
+{
+  "country_code": "EG",
+  "tax_rules": [
+    {
+      "transaction_type": "sale",
+      "name": "ضريبة القيمة المضافة المصرية",
+      "short_name": "VAT",
+      "rate": 14,
+      "tax_type": "vat",
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_default": 1,
+      "calculation_method": "additive",
+      "is_enabled": 1,
+      "notes": "ضريبة مبيعات / مخرجات"
+    },
+    {
+      "transaction_type": "purchase",
+      "name": "ضريبة القيمة المضافة المصرية",
+      "short_name": "VAT",
+      "rate": 14,
+      "tax_type": "vat",
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_default": 0,
+      "calculation_method": "input",
+      "is_enabled": 1,
+      "notes": "ضريبة مشتريات / مدخلات قابلة للخصد محاسبياً"
+    },
+    {
+      "transaction_type": "service",
+      "name": "ضريبة القيمة المضافة المصرية",
+      "short_name": "VAT",
+      "rate": 14,
+      "tax_type": "vat",
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_default": 0,
+      "calculation_method": "additive",
+      "is_enabled": 1,
+      "notes": "خدمات"
+    },
+    {
+      "transaction_type": "consulting",
+      "name": "ضريبة القيمة المضافة المصرية",
+      "short_name": "VAT",
+      "rate": 14,
+      "tax_type": "vat",
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_default": 0,
+      "calculation_method": "additive",
+      "is_enabled": 1,
+      "notes": "استشارات"
+    },
+    {
+      "transaction_type": "service",
+      "name": "ضريبة الخصم والتحصيل - الخدمات",
+      "short_name": "WHT",
+      "rate": 3,
+      "tax_type": "withholding_tax",
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_default": 0,
+      "calculation_method": "withholding",
+      "is_enabled": 0,
+      "notes": "تفعيلها يعتمد على نوع المورد والإقامة والعقد واللوائح المحلية"
+    },
+    {
+      "transaction_type": "consulting",
+      "name": "ضريبة الخصم والتحصيل - الاستشارات",
+      "short_name": "WHT",
+      "rate": 3,
+      "tax_type": "withholding_tax",
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_default": 0,
+      "calculation_method": "withholding",
+      "is_enabled": 0,
+      "notes": "تفعيلها يعتمد على نوع المورد والإقامة والعقد واللوائح المحلية"
+    }
+  ],
+  "tax_rates": [
+    {
+      "tax_code": "VAT_STD",
+      "name_ar": "ضريبة القيمة المضافة (المعدل القياسي)",
+      "name_en": "VAT Standard Rate",
+      "tax_type": "vat",
+      "rate_percentage": 14,
+      "applies_to": "both",
+      "is_default": true,
+      "is_withholding": false,
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_active": true
+    },
+    {
+      "tax_code": "VAT_ZERO",
+      "name_ar": "ضريبة القيمة المضافة (سعر صفر)",
+      "name_en": "VAT Zero Rate",
+      "tax_type": "vat",
+      "rate_percentage": 0,
+      "applies_to": "both",
+      "is_default": false,
+      "is_withholding": false,
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_active": true
+    },
+    {
+      "tax_code": "VAT_EXEMPT",
+      "name_ar": "معفاة من ضريبة القيمة المضافة",
+      "name_en": "VAT Exempt",
+      "tax_type": "vat",
+      "rate_percentage": 0,
+      "applies_to": "both",
+      "is_default": false,
+      "is_withholding": false,
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_active": true
+    },
+    {
+      "tax_code": "WHT_CONSULT",
+      "name_ar": "ضريبة الخصم والتحصيل - الاستشارات",
+      "name_en": "Withholding Tax - Consulting",
+      "tax_type": "withholding",
+      "rate_percentage": 3,
+      "applies_to": "purchases",
+      "is_default": false,
+      "is_withholding": true,
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_active": true
+    },
+    {
+      "tax_code": "WHT_SERVICES",
+      "name_ar": "ضريبة الخصم والتحصيل - الخدمات",
+      "name_en": "Withholding Tax - Services",
+      "tax_type": "withholding",
+      "rate_percentage": 3,
+      "applies_to": "purchases",
+      "is_default": false,
+      "is_withholding": true,
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_active": true
+    }
+  ]
+}

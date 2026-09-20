@@ -372,6 +372,20 @@ const SettingsPage = () => {
   const [fonts, setFonts] = useState([]);
   const [coaTemplates, setCoaTemplates] = useState([]);
   const [selectedCoaTemplate, setSelectedCoaTemplate] = useState('');
+  const [taxTypeCatalog, setTaxTypeCatalog] = useState([]);
+  const [addTaxModalOpen, setAddTaxModalOpen] = useState(false);
+  const [addTaxForm, setAddTaxForm] = useState({
+    name: '',
+    short_name: '',
+    rate: 0,
+    tax_type: 'vat',
+    transaction_type: 'sale',
+    effective_from: '',
+    effective_to: '',
+    is_default: false,
+    is_enabled: true,
+    notes: '',
+  });
 
   // Form states
   const [companyForm, setCompanyForm] = useState({
@@ -447,12 +461,38 @@ const SettingsPage = () => {
         if (countriesRes.success) setCountries(countriesRes.data);
         if (currenciesRes.success) setCurrencies(currenciesRes.data);
         if (fontsRes.success) setFonts(fontsRes.data);
+        const taxTypesRes = await window.api?.taxes?.taxTypes?.();
+        if (taxTypesRes?.success) setTaxTypeCatalog(taxTypesRes.data);
       } catch (err) {
         console.error('Failed to fetch lookups:', err);
       }
     };
     fetchLookups();
   }, []);
+
+  // Load tax template when country changes
+  useEffect(() => {
+    if (invoicingForm.country_code) {
+      loadTaxTemplate(invoicingForm.country_code);
+    }
+  }, [invoicingForm.country_code]);
+
+  const loadTaxTemplate = async (countryCode) => {
+    try {
+      const response = await window.api.taxes.templates.load(countryCode);
+      if (response?.success && response.data?.taxes) {
+        // Auto-apply the tax template to tax_rates table
+        const applyResponse = await window.api.taxes.templates.apply(countryCode);
+        if (applyResponse?.success) {
+          toast.success(`تم تحميل ضرائب ${countryCode.toUpperCase()} بنجاح`);
+        }
+        // Reload tax rules
+        loadTaxRules(countryCode);
+      }
+    } catch (err) {
+      console.error('Failed to load tax template:', err);
+    }
+  };
 
   const loadTaxRules = async (countryCode = invoicingForm.tax_country_code) => {
     const response = await window.api?.taxes?.list({ countryCode, includeDisabled: true });
@@ -465,6 +505,40 @@ const SettingsPage = () => {
     const response = await window.api?.taxes?.update({ id: rule.id, rate: rule.rate, is_enabled: enabled });
     if (response?.success) { toast.success(response.message); loadTaxRules(); }
     else toast.error(response?.error || 'تعذر تحديث الضريبة');
+  };
+
+  const createTaxRule = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!addTaxForm.name.trim()) {
+      toast.error('اسم الضريبة مطلوب');
+      return;
+    }
+    const response = await window.api?.taxes?.create({
+      ...addTaxForm,
+      country_code: invoicingForm.country_code,
+      is_default: addTaxForm.is_default ? 1 : 0,
+      is_enabled: addTaxForm.is_enabled ? 1 : 0,
+    });
+    if (response?.success) {
+      toast.success(response.message);
+      setAddTaxModalOpen(false);
+      setAddTaxForm({ name: '', short_name: '', rate: 0, tax_type: 'vat', transaction_type: 'sale', effective_from: '', effective_to: '', is_default: false, is_enabled: true, notes: '' });
+      loadTaxRules(invoicingForm.country_code);
+    } else {
+      toast.error(response?.error || 'تعذر إضافة الضريبة');
+    }
+  };
+
+  const deleteTaxRule = async (rule) => {
+    if (!window.confirm(`هل أنت متأكد من حذف الضريبة "${rule.name}"؟ لا يمكن التراجع.`)) return;
+    const response = await window.api?.taxes?.delete({ id: rule.id });
+    if (response?.success) {
+      toast.success(response.message);
+      loadTaxRules(invoicingForm.country_code);
+    } else {
+      toast.error(response?.error || 'تعذر حذف الضريبة');
+    }
   };
 
   const applyAccountingCatalog = async () => {
@@ -973,7 +1047,7 @@ const SettingsPage = () => {
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>الخط<select value={invoicingForm.font_family} onChange={(e) => { setInvoicingForm({ ...invoicingForm, font_family: e.target.value }); document.documentElement.style.setProperty('--app-font-family', `'${e.target.value}', sans-serif`); }} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>{fonts.map((font) => <option key={font.code} value={font.code}>{font.name_ar}</option>)}</select></label>
 
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>نوع الضريبة<select value={invoicingForm.tax_type} onChange={(e) => setInvoicingForm({ ...invoicingForm, tax_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}><option value="VAT">ضريبة القيمة المضافة</option><option value="GST">ضريبة السلع والخدمات</option><option value="SALES_TAX">ضريبة المبيعات</option><option value="WITHHOLDING">الخصم من المنبع</option></select></label>
+               <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>نوع الضريبة<input list="tax-type-datalist" value={invoicingForm.tax_type} onChange={(e) => setInvoicingForm({ ...invoicingForm, tax_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }} placeholder="اختر أو اكتب نوع الضريبة" /><datalist id="tax-type-datalist">{taxTypeCatalog.map((type) => <option key={type} value={type} />)}</datalist></label>
 
               <Input label="كود قالب الدليل المحاسبي" value={invoicingForm.coa_template_code} onChange={(e) => setInvoicingForm({ ...invoicingForm, coa_template_code: e.target.value })} helperText="اتركه فارغاً لاختيار تلقائي حسب الدولة" />
 
@@ -1000,18 +1074,87 @@ const SettingsPage = () => {
             </div>
 
             <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '16px' }}>
-              <h4 style={{ margin: 0, color: 'var(--text-main)', fontSize: '15px' }}>تفعيل الضرائب التي تظهر عند إنشاء الفاتورة</h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <h4 style={{ margin: 0, color: 'var(--text-main)', fontSize: '15px' }}>تفعيل الضرائب التي تظهر عند إنشاء الفاتورة</h4>
+                <Button variant="secondary" size="sm" icon={Plus} onClick={() => setAddTaxModalOpen(true)}>إضافة ضريبة جديدة</Button>
+              </div>
               <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '6px 0 12px' }}>فعّل الضريبة المطلوبة هنا، ثم ستظهر كخيار داخل فاتورة البيع أو الشراء حسب الدولة المختارة.</p>
               <div style={{ display: 'grid', gap: '8px' }}>
                 {taxRules.map((rule) => (
                   <label key={rule.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)', fontSize: '13px' }}>
                     <input type="checkbox" checked={Boolean(rule.is_enabled)} onChange={(event) => updateTaxRule(rule, event.target.checked)} />
                     <span>{rule.name} - {rule.transaction_type} ({rule.rate}%)</span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>({rule.tax_type})</span>
+                    <button
+                      onClick={() => deleteTaxRule(rule)}
+                      style={{
+                        padding: '4px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--border-color)',
+                        backgroundColor: 'var(--bg-surface)',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        marginLeft: 'auto',
+                      }}
+                      title="حذف"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </label>
                 ))}
                 {!taxRules.length && <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>لا توجد قواعد لهذه الدولة.</span>}
               </div>
             </div>
+
+            <Modal isOpen={addTaxModalOpen} onClose={() => setAddTaxModalOpen(false)} title="إضافة ضريبة جديدة">
+              <form onSubmit={createTaxRule} style={{ display: 'grid', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <Input label="اسم الضريبة" required value={addTaxForm.name} onChange={(e) => setAddTaxForm({ ...addTaxForm, name: e.target.value })} />
+                  <Input label="اسم مختصر" value={addTaxForm.short_name} onChange={(e) => setAddTaxForm({ ...addTaxForm, short_name: e.target.value })} helperText="مثال: VAT، GST" />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>نوع المعاملة
+                    <select value={addTaxForm.transaction_type} onChange={(e) => setAddTaxForm({ ...addTaxForm, transaction_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>
+                      <option value="sale">مبيعات</option>
+                      <option value="purchase">مشتريات</option>
+                      <option value="service">خدمات</option>
+                      <option value="consulting">استشارات</option>
+                      <option value="all">الكل</option>
+                    </select>
+                  </label>
+                  <Input label="النسبة %" type="number" min="0" step="0.1" required value={addTaxForm.rate} onChange={(e) => setAddTaxForm({ ...addTaxForm, rate: e.target.value })} />
+                </div>
+
+                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>نوع الضريبة
+                  <input list="add-tax-type-datalist" value={addTaxForm.tax_type} onChange={(e) => setAddTaxForm({ ...addTaxForm, tax_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }} />
+                  <datalist id="add-tax-type-datalist">{taxTypeCatalog.map((type) => <option key={type} value={type} />)}</datalist>
+                </label>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <Input label="تاريخ بدء السريان" type="date" value={addTaxForm.effective_from} onChange={(e) => setAddTaxForm({ ...addTaxForm, effective_from: e.target.value })} />
+                  <Input label="تاريخ انتهاء السريان" type="date" value={addTaxForm.effective_to} onChange={(e) => setAddTaxForm({ ...addTaxForm, effective_to: e.target.value })} helperText="اتركه فارغاً إذا كانت غير منتهية" />
+                </div>
+
+                <Input label="ملاحظات" value={addTaxForm.notes} onChange={(e) => setAddTaxForm({ ...addTaxForm, notes: e.target.value })} />
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={addTaxForm.is_default} onChange={(e) => setAddTaxForm({ ...addTaxForm, is_default: e.target.checked })} style={{ width: '16px', height: '16px', accentColor: 'var(--primary-color)' }} />
+                    ضريبة افتراضية
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={addTaxForm.is_enabled} onChange={(e) => setAddTaxForm({ ...addTaxForm, is_enabled: e.target.checked })} style={{ width: '16px', height: '16px', accentColor: 'var(--primary-color)' }} />
+                    مفعلة
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <Button variant="secondary" onClick={() => setAddTaxModalOpen(false)}>إلغاء</Button>
+                  <Button type="submit" icon={Plus}>إضافة الضريبة</Button>
+                </div>
+              </form>
+            </Modal>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <Button type="submit" variant="primary" icon={Save} loading={loading}>

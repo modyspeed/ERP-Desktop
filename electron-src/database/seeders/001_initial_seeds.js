@@ -262,28 +262,78 @@ function runAccountingCatalogSeeds(db) {
 }
 
 function runTaxRuleSeeds(db) {
-  const countries = [
-    { code: 'SA', vat: 15, vatName: 'ضريبة القيمة المضافة السعودية', wht: 5 },
-    { code: 'EG', vat: 14, vatName: 'ضريبة القيمة المضافة المصرية', wht: 3 },
-    { code: 'AE', vat: 5, vatName: 'ضريبة القيمة المضافة الإماراتية', wht: 0 },
-    { code: 'BH', vat: 10, vatName: 'ضريبة القيمة المضافة البحرينية', wht: 0 },
-    { code: 'OM', vat: 5, vatName: 'ضريبة القيمة المضافة العُمانية', wht: 0 },
-    { code: 'KW', vat: 5, vatName: 'ضريبة القيمة المضافة الكويتية', wht: 0 },
-    { code: 'QA', vat: 0, vatName: 'ضريبة القيمة المضافة القطرية', wht: 0 },
-  ];
-  const insert = db.prepare('INSERT OR IGNORE INTO tax_rules (country_code, transaction_type, name, short_name, rate, calculation_method, is_enabled, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  const fs = require('fs');
+  const path = require('path');
+  const templatesDir = path.join(__dirname, '..', 'database', 'tax-templates');
+  if (!fs.existsSync(templatesDir)) return;
+
+  const files = fs.readdirSync(templatesDir).filter((f) => f.endsWith('.json'));
+  const insert = db.prepare(
+    'INSERT OR IGNORE INTO tax_rules (country_code, transaction_type, name, short_name, rate, tax_type, effective_from, effective_to, is_default, calculation_method, is_enabled, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  );
+
   db.transaction(() => {
-    for (const country of countries) {
-      insert.run(country.code, 'sale', country.vatName, 'VAT', country.vat, 'additive', 1, 'ضريبة مبيعات / مخرجات');
-      insert.run(country.code, 'purchase', country.vatName, 'VAT', country.vat, 'input', 1, 'ضريبة مشتريات / مدخلات قابلة للخصم محاسبياً');
-      insert.run(country.code, 'service', country.vatName, 'VAT', country.vat, 'additive', 1, 'خدمات');
-      insert.run(country.code, 'consulting', country.vatName, 'VAT', country.vat, 'additive', 1, 'استشارات');
-      if (country.wht > 0) {
-        insert.run(country.code, 'service', 'ضريبة الخصم والتحصيل على الخدمات', 'WHT', country.wht, 'withholding', 0, 'تفعيلها يعتمد على نوع المورد والإقامة والعقد واللوائح المحلية');
-        insert.run(country.code, 'consulting', 'ضريبة الخصم والتحصيل على الاستشارات', 'WHT', country.wht, 'withholding', 0, 'تفعيلها يعتمد على نوع المورد والإقامة والعقد واللوائح المحلية');
+    for (const file of files) {
+      const filePath = path.join(templatesDir, file);
+      const content = fs.readFileSync(filePath, 'utf8');
+      const template = JSON.parse(content);
+      const countryCode = template.country_code || file.replace('.json', '');
+
+      if (!template.tax_rules) continue;
+
+      for (const rule of template.tax_rules) {
+        insert.run(
+          countryCode,
+          rule.transaction_type,
+          rule.name,
+          rule.short_name || null,
+          rule.rate || 0,
+          rule.tax_type || 'vat',
+          rule.effective_from || null,
+          rule.effective_to || null,
+          rule.is_default ? 1 : 0,
+          rule.calculation_method || 'additive',
+          rule.is_enabled ? 1 : 0,
+          rule.notes || null
+        );
       }
     }
   })();
+}
+
+function runTaxTemplateSeeds(db) {
+  const fs = require('fs');
+  const path = require('path');
+  const templatesDir = path.join(__dirname, '..', 'database', 'tax-templates');
+  if (!fs.existsSync(templatesDir)) return;
+
+  const files = fs.readdirSync(templatesDir).filter((f) => f.endsWith('.json'));
+  const insertTax = db.prepare('INSERT OR IGNORE INTO tax_rates (country_code, tax_code, name_ar, name_en, tax_type, rate_percentage, applies_to, is_default, is_withholding, effective_from, effective_to, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+
+  for (const file of files) {
+    const filePath = path.join(templatesDir, file);
+    const content = fs.readFileSync(filePath, 'utf8');
+    const template = JSON.parse(content);
+    const countryCode = template.country_code || file.replace('.json', '');
+
+    const taxes = template.tax_rates || [];
+    for (const tax of taxes) {
+      insertTax.run(
+        countryCode,
+        tax.tax_code,
+        tax.name_ar,
+        tax.name_en,
+        tax.tax_type,
+        tax.rate_percentage,
+        tax.applies_to,
+        tax.is_default ? 1 : 0,
+        tax.is_withholding ? 1 : 0,
+        tax.effective_from,
+        tax.effective_to || null,
+        tax.is_active ? 1 : 0
+      );
+    }
+  }
 }
 
 function runDemoInvoiceSeeds(db) {
@@ -326,4 +376,4 @@ function runDemoInvoiceSeeds(db) {
   })();
 }
 
-module.exports = { runSeeders, runDemoSeeds, runAccountingCatalogSeeds, runTaxRuleSeeds, runDemoInvoiceSeeds };
+module.exports = { runSeeders, runDemoSeeds, runAccountingCatalogSeeds, runTaxRuleSeeds, runTaxTemplateSeeds, runDemoInvoiceSeeds };

@@ -19,3 +19,7 @@ electron_out.log
 test_electron.log
 test_electron_err.log
 test_db.js
+release-acceptance/
+release-unsigned/
+release-unsigned2/
+release/
