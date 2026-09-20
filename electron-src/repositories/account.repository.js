@@ -42,8 +42,33 @@ class AccountRepository extends BaseRepository {
     })();
   }
 
-  applyCatalogFromTemplate(template) {
-    const db = this.db;
+  listJournalEntries({ query = '', reference_type, reference_id } = {}) {
+    let sql = `SELECT je.* FROM journal_entries je WHERE je.is_deleted = 0`;
+    const params = [];
+    if (query.trim()) {
+      sql += ' AND (je.entry_number LIKE ? OR je.description LIKE ?)';
+      const search = `%${query.trim()}%`;
+      params.push(search, search);
+    }
+    if (reference_type) { sql += ' AND je.reference_type = ?'; params.push(reference_type); }
+    if (reference_id) { sql += ' AND je.reference_id = ?'; params.push(Number(reference_id)); }
+    sql += ' ORDER BY je.id DESC LIMIT 100';
+    const entries = this.db.prepare(sql).all(...params);
+    if (!entries.length) return [];
+    const ids = entries.map((entry) => entry.id);
+    const placeholders = ids.map(() => '?').join(', ');
+    const lines = this.db
+      .prepare(`SELECT jel.*, a.code AS account_code, a.name AS account_name, a.account_type FROM journal_entry_lines jel LEFT JOIN chart_of_accounts a ON a.id = jel.account_id WHERE jel.journal_entry_id IN (${placeholders})`)
+      .all(...ids);
+    return entries.map((entry) => ({
+      ...entry,
+      lines: lines.filter((line) => line.journal_entry_id === entry.id),
+      total_debit: lines.filter((line) => line.journal_entry_id === entry.id).reduce((sum, line) => sum + Number(line.debit || 0), 0),
+      total_credit: lines.filter((line) => line.journal_entry_id === entry.id).reduce((sum, line) => sum + Number(line.credit || 0), 0),
+    }));
+  }
+
+  applyCatalogFromTemplate(template) {    const db = this.db;
     if (!template || !template.accounts || !template.accounts.length) {
       throw new Error('القالب المحاسبي فارغ أو غير صالح');
     }

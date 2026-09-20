@@ -137,6 +137,10 @@ contextBridge.exposeInMainWorld('api', {
     coaTemplates: () => invokeWithUser('coa-templates:list'),
   },
 
+  journal: {
+    list: (params) => invokeWithUser('journal:list', params),
+  },
+
   categories: {
     list: (branchId) => invokeWithUser('categories:list', branchId),
     save: (data) => invokeWithUser('categories:save', data),

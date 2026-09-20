@@ -2,6 +2,7 @@ const BaseRepository = require('./base.repository');
 const { getDatabase } = require('../database/db');
 const { generateDocumentNumber } = require('../utils/numbering');
 const { calculateTaxes } = require('../utils/tax');
+const { resolveAccount, createJournalEntry } = require('../utils/journal');
 
 class SalesRepository extends BaseRepository {
   constructor() {
@@ -83,6 +84,34 @@ class SalesRepository extends BaseRepository {
         insertMovement.run(branch_id, item.product.id, warehouse_id, item.quantity, invoice.lastInsertRowid, `بيع ${invoiceNumber}`, created_by || null);
       }
       if (customer_id && remaining > 0) db.prepare('UPDATE customers SET current_balance = current_balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(remaining, customer_id);
+
+      // Auto-post a balanced journal entry for the invoice. The tax is kept as
+      // its own credit line (VAT on sales) instead of being merged into revenue.
+      const journalLines = [];
+      const revenueAccount = resolveAccount(db, '4110', 'revenue', 'مبيعات');
+      const taxAccount = resolveAccount(db, '2210', 'liability', 'قيمة المضافة');
+      const cashAccount = resolveAccount(db, '1110', 'asset', 'صندوق');
+      const receivableAccount = resolveAccount(db, '1210', 'asset', 'عملاء');
+
+      if (paid > 0 && cashAccount) journalLines.push({ account_id: cashAccount, debit: paid, credit: 0 });
+      if (remaining > 0 && receivableAccount) journalLines.push({ account_id: receivableAccount, debit: remaining, credit: 0 });
+      if (revenueAccount) journalLines.push({ account_id: revenueAccount, debit: 0, credit: taxable });
+      for (const detail of taxSummary.details) {
+        if (!taxAccount) break;
+        const amount = Number(detail.amount || 0);
+        if (amount > 0) journalLines.push({ account_id: taxAccount, debit: 0, credit: amount });
+        else if (amount < 0) journalLines.push({ account_id: taxAccount, debit: -amount, credit: 0 });
+      }
+
+      createJournalEntry(db, {
+        branch_id,
+        description: `فاتورة بيع ${invoiceNumber}`,
+        reference_type: 'sales_invoice',
+        reference_id: invoice.lastInsertRowid,
+        lines: journalLines,
+        created_by,
+      });
+
       return db.prepare('SELECT * FROM sales_invoices WHERE id = ?').get(invoice.lastInsertRowid);
     })();
   }

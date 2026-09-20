@@ -8,6 +8,7 @@ class AccountService {
   createCatalog(data) { return accountRepository.createCatalog(data); }
   applyCatalog(id) { return accountRepository.applyCatalog(id); }
   applyCatalogFromTemplate(template) { return accountRepository.applyCatalogFromTemplate(template); }
+  listJournalEntries(params) { return accountRepository.listJournalEntries(params || {}); }
 }
 
 module.exports = new AccountService();

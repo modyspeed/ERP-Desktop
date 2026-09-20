@@ -76,6 +76,12 @@ function registerAccountsIPC(ipcMain) {
       return { success: false, error: err.message };
     }
   });
+
+  // Journal entries
+  ipcMain.handle('journal:list', async (event, params) => {
+    try { return { success: true, data: accountService.listJournalEntries(params || {}) }; }
+    catch (err) { return { success: false, error: err.message }; }
+  });
 }
 
 module.exports = registerAccountsIPC;
