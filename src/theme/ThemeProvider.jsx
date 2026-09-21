@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { THEME_COLORS, DEFAULT_THEME_COLOR } from './theme';
+import { THEME_COLORS, DEFAULT_THEME_COLOR, DEFAULT_FONT_FAMILY, buildFontStack } from './theme';
 
 const ThemeContext = createContext(null);
 
@@ -11,6 +11,10 @@ export const ThemeProvider = ({ children }) => {
 
   const [themeColor, setThemeColor] = useState(() => {
     return localStorage.getItem('app_theme_color') || DEFAULT_THEME_COLOR;
+  });
+
+  const [fontFamily, setFontFamily] = useState(() => {
+    return localStorage.getItem('app_font_family') || DEFAULT_FONT_FAMILY;
   });
 
   useEffect(() => {
@@ -27,6 +31,17 @@ export const ThemeProvider = ({ children }) => {
     localStorage.setItem('app_theme_color', themeColor);
   }, [themeColor]);
 
+  // The font is written to the SAME --font-family variable the global `*` rule
+  // consumes, so every screen picks it up. The inline property on <html> wins
+  // over the :root default, and the fallbacks keep unstyled glyphs readable.
+  useEffect(() => {
+    const stack = buildFontStack(fontFamily);
+    if (stack) {
+      document.documentElement.style.setProperty('--font-family', stack);
+      localStorage.setItem('app_font_family', fontFamily);
+    }
+  }, [fontFamily]);
+
   const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
 
   return (
@@ -37,6 +52,8 @@ export const ThemeProvider = ({ children }) => {
         toggleDarkMode,
         themeColor,
         setThemeColor,
+        fontFamily,
+        setFontFamily,
         themeColors: THEME_COLORS,
       }}
     >

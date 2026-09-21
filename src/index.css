@@ -31,6 +31,7 @@
   --radius-xl: 1.25rem;
   --radius-full: 9999px;
 
+  /* Overridden at runtime by ThemeProvider with the font picked in Settings > Appearance. */
   --font-family: 'Cairo', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 

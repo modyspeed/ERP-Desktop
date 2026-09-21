@@ -9,7 +9,7 @@ export const SettingsProvider = ({ children }) => {
   const [branches, setBranches] = useState([]);
   const [currentBranchId, setCurrentBranchId] = useState(1);
   const [loading, setLoading] = useState(true);
-  const { setThemeColor, setIsDarkMode } = useTheme();
+  const { setThemeColor, setIsDarkMode, setFontFamily } = useTheme();
 
   const fetchSettings = useCallback(async () => {
     try {
@@ -21,12 +21,20 @@ export const SettingsProvider = ({ children }) => {
           if (res.data.theme_color) {
             setThemeColor(res.data.theme_color);
           }
+          // Apply the saved font so every screen starts with the chosen typeface.
+          if (res.data.font_family) {
+            setFontFamily(res.data.font_family);
+          }
+          // The DB stores the default mode; localStorage wins once the user toggles it.
+          if (res.data.dark_mode_default !== undefined && res.data.dark_mode_default !== null && localStorage.getItem('app_dark_mode') === null) {
+            setIsDarkMode(!!res.data.dark_mode_default);
+          }
         }
       }
     } catch (err) {
       console.error('Failed to load settings:', err);
     }
-  }, [setThemeColor]);
+  }, [setThemeColor, setFontFamily, setIsDarkMode]);
 
   const fetchBranches = useCallback(async () => {
     try {
@@ -58,6 +66,8 @@ export const SettingsProvider = ({ children }) => {
     if (!res.success) throw new Error(res.error || 'فشل حفظ الإعدادات');
     setSettings(res.data);
     if (data.theme_color) setThemeColor(data.theme_color);
+    if (data.font_family) setFontFamily(data.font_family);
+    if (data.dark_mode_default !== undefined && data.dark_mode_default !== null) setIsDarkMode(!!data.dark_mode_default);
     if (data.default_language) changeAppLanguage(data.default_language);
     return res.data;
   };

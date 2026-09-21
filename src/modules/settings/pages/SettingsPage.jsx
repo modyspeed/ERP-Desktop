@@ -356,7 +356,7 @@ const SettingsPage = () => {
   const { t, i18n } = useTranslation();
   const { settings, branches, updateSettings, uploadLogo, refreshBranches, refreshSettings } = useSettings();
   const { user } = useAuth();
-  const { isDarkMode, toggleDarkMode, themeColor, setThemeColor, themeColors } = useTheme();
+  const { isDarkMode, toggleDarkMode, themeColor, setThemeColor, themeColors, setFontFamily } = useTheme();
   const toast = useToast();
 
   const [activeTab, setActiveTab] = useState('company');
@@ -1066,7 +1066,7 @@ const SettingsPage = () => {
 
               <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>تنسيق التاريخ<select value={invoicingForm.date_format} onChange={(e) => setInvoicingForm({ ...invoicingForm, date_format: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}><option value="dd/MM/yyyy">يوم/شهر/سنة</option><option value="MM/dd/yyyy">شهر/يوم/سنة</option><option value="yyyy-MM-dd">سنة-شهر-يوم</option></select></label>
 
-              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>الخط<select value={invoicingForm.font_family} onChange={(e) => { setInvoicingForm({ ...invoicingForm, font_family: e.target.value }); document.documentElement.style.setProperty('--app-font-family', `'${e.target.value}', sans-serif`); }} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>{fonts.map((font) => <option key={font.code} value={font.code}>{font.name_ar}</option>)}</select></label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>الخط<select value={invoicingForm.font_family} onChange={(e) => { const next = e.target.value; setInvoicingForm({ ...invoicingForm, font_family: next }); setFontFamily(next); updateSettings({ font_family: next }, user?.id); }} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}>{fonts.map((font) => <option key={font.code} value={font.code}>{font.name_ar}</option>)}</select></label>
 
                <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>نوع الضريبة<input list="tax-type-datalist" value={invoicingForm.tax_type} onChange={(e) => setInvoicingForm({ ...invoicingForm, tax_type: e.target.value })} style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }} placeholder="اختر أو اكتب نوع الضريبة" /><datalist id="tax-type-datalist">{taxTypeCatalog.map((type) => <option key={type} value={type} />)}</datalist></label>
 

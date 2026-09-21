@@ -8,3 +8,17 @@ export const THEME_COLORS = [
 ];
 
 export const DEFAULT_THEME_COLOR = '#2563eb';
+
+export const DEFAULT_FONT_FAMILY = 'Cairo';
+
+// Fallbacks appended after the chosen font so Latin/missing glyphs still render.
+const FONT_FALLBACKS = "'Cairo', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+export function buildFontStack(fontFamily) {
+  if (!fontFamily) return null;
+  // Avoid listing the chosen face twice when it is already the first fallback.
+  const fallbacks = fontFamily === 'Cairo'
+    ? "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+    : FONT_FALLBACKS;
+  return `'${fontFamily}', ${fallbacks}`;
+}
