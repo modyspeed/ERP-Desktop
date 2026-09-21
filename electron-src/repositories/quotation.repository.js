@@ -87,14 +87,18 @@ class QuotationRepository extends BaseRepository {
     const quotation = this.getQuotation(quotationId);
     if (!quotation) throw new Error('العرض غير موجود');
     if (quotation.status === 'converted') throw new Error('تم تحويل هذا العرض بالفعل');
-    if (!data.customer_id) throw new Error('العميل مطلوب');
+
+    // The customer is taken from the quotation itself; the caller may override it.
+    const customerId = data.customer_id || quotation.customer_id;
+    if (!customerId) throw new Error('العميل مطلوب');
 
     const items = this.getQuotationItems(quotationId);
     if (!items.length) throw new Error('العرض لا يحتوي على أصناف');
 
-    const settings = db.prepare('SELECT invoice_prefix_sales, tax_enabled, tax_country_code, tax_percentage FROM company_settings LIMIT 1').get();
+    const settings = db.prepare('SELECT invoice_prefix_sales, tax_enabled, tax_country_code, tax_percentage, sales_tax_percentage FROM company_settings LIMIT 1').get() || {};
     const prefix = settings.invoice_prefix_sales || 'INV-';
-    const taxRate = settings.tax_enabled ? (Number(settings.tax_percentage ?? settings.tax_percentage ?? 0)) : 0;
+    const taxRate = settings.tax_enabled ? Number(settings.sales_tax_percentage ?? settings.tax_percentage ?? 0) : 0;
+    const createdBy = data.currentUserId ?? data.created_by ?? quotation.created_by ?? null;
 
     return db.transaction(() => {
       // Mark quotation as converted
@@ -121,9 +125,12 @@ class QuotationRepository extends BaseRepository {
       const taxSummary = settings.tax_enabled ? calculateTaxes(db, { countryCode: settings.tax_country_code || 'SA', transactionType: 'sale', subtotal: taxable, fallbackRate: taxRate }) : { details: [], totalTax: 0 };
       const taxAmount = taxSummary.totalTax;
       const total = taxable + taxAmount;
+      const paid = total;
+      const remaining = total - paid;
+      const paymentStatus = remaining <= 0 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
 
-      const invoice = db.prepare(`INSERT INTO sales_invoices (branch_id, invoice_number, customer_id, warehouse_id, date, subtotal, discount, tax_amount, tax_details, total, paid_amount, remaining_amount, payment_status, invoice_type, source, created_by) VALUES (?, ?, ?, ?, date('now'), ?, ?, ?, ?, ?, ?, ?, 'cash', 'manual', ?)`).run(
-        branchId, invoiceNumber, data.customer_id, warehouseId, subtotal, safeDiscount, taxAmount, JSON.stringify(taxSummary.details), total, total, total, 'manual', quotationId
+      const invoice = db.prepare(`INSERT INTO sales_invoices (branch_id, invoice_number, customer_id, warehouse_id, date, subtotal, discount, tax_amount, tax_details, total, paid_amount, remaining_amount, payment_status, invoice_type, source, created_by) VALUES (?, ?, ?, ?, date('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        branchId, invoiceNumber, customerId, warehouseId, subtotal, safeDiscount, taxAmount, JSON.stringify(taxSummary.details), total, paid, remaining, paymentStatus, 'cash', 'manual', createdBy
       );
 
       const insertItem = db.prepare('INSERT INTO sales_invoice_items (invoice_id, product_id, qty, unit_price, discount, tax, line_total) VALUES (?, ?, ?, ?, 0, 0, ?)');
@@ -134,8 +141,35 @@ class QuotationRepository extends BaseRepository {
         insertItem.run(invoice.lastInsertRowid, item.product.id, item.quantity, item.unitPrice, item.lineTotal);
         const changed = updateStock.run(item.quantity, item.product.id, warehouseId, item.quantity);
         if (!changed.changes) throw new Error(`المخزون غير كافٍ للمنتج: ${item.product.name}`);
-        insertMovement.run(branchId, item.product.id, warehouseId, item.quantity, invoice.lastInsertRowid, `عرض لسعر - ${invoiceNumber}`, null);
+        insertMovement.run(branchId, item.product.id, warehouseId, item.quantity, invoice.lastInsertRowid, `عرض لسعر - ${invoiceNumber}`, createdBy);
       }
+
+      // Auto-post a balanced journal entry, mirroring the sales invoice flow.
+      const { resolveAccount, createJournalEntry } = require('../utils/journal');
+      const journalLines = [];
+      const revenueAccount = resolveAccount(db, '4110', 'revenue', 'مبيعات');
+      const taxAccount = resolveAccount(db, '2210', 'liability', 'قيمة المضافة');
+      const cashAccount = resolveAccount(db, '1110', 'asset', 'صندوق');
+      const receivableAccount = resolveAccount(db, '1210', 'asset', 'عملاء');
+
+      if (paid > 0 && cashAccount) journalLines.push({ account_id: cashAccount, debit: paid, credit: 0 });
+      if (remaining > 0 && receivableAccount) journalLines.push({ account_id: receivableAccount, debit: remaining, credit: 0 });
+      if (revenueAccount) journalLines.push({ account_id: revenueAccount, debit: 0, credit: taxable });
+      for (const detail of taxSummary.details) {
+        if (!taxAccount) break;
+        const amount = Number(detail.amount || 0);
+        if (amount > 0) journalLines.push({ account_id: taxAccount, debit: 0, credit: amount });
+        else if (amount < 0) journalLines.push({ account_id: taxAccount, debit: -amount, credit: 0 });
+      }
+
+      createJournalEntry(db, {
+        branch_id: branchId,
+        description: `فاتورة بيع من عرض سعر ${invoiceNumber}`,
+        reference_type: 'sales_invoice',
+        reference_id: invoice.lastInsertRowid,
+        lines: journalLines,
+        created_by: createdBy,
+      });
 
       return { invoice: db.prepare('SELECT * FROM sales_invoices WHERE id = ?').get(invoice.lastInsertRowid), quotation_id: quotationId };
     })();

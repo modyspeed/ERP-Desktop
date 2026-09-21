@@ -32,14 +32,15 @@ class ReturnRepository extends BaseRepository {
   createSalesReturn({ branch_id = 1, invoice_id, date, items, reason, created_by }) {
     const db = getDatabase();
     const returnNumber = generateDocumentNumber('sales_returns', 'return_number', 'RET-');
-    // Get customer_id from invoice
+    // Get customer_id and warehouse_id from invoice
     const invoice = db.prepare('SELECT customer_id, warehouse_id FROM sales_invoices WHERE id = ?').get(invoice_id);
+    if (!invoice) throw new Error('الفاتورة غير موجودة');
 
     return db.transaction(() => {
-      const result = db.prepare('INSERT INTO sales_returns (branch_id, invoice_id, return_number, date, total_amount, reason, created_by) VALUES (?, ?, ?, date("now"), 0, ?, ?)').run(branch_id, invoice_id, returnNumber, reason, created_by);
+      const result = db.prepare("INSERT INTO sales_returns (branch_id, invoice_id, return_number, date, total_amount, reason, created_by) VALUES (?, ?, ?, date('now'), 0, ?, ?)").run(branch_id, invoice_id, returnNumber, reason, created_by);
 
       const insertItem = db.prepare('INSERT INTO sales_return_items (return_id, product_id, qty, unit_price) VALUES (?, ?, ?, ?)');
-      const updateStock = db.prepare('UPDATE stock_levels SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE product_id = ? AND warehouse_id = ?');
+      const updateStock = db.prepare(`INSERT INTO stock_levels (product_id, warehouse_id, quantity, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(product_id, warehouse_id) DO UPDATE SET quantity = quantity + excluded.quantity, updated_at = CURRENT_TIMESTAMP`);
       const insertMovement = db.prepare(`INSERT INTO stock_movements (branch_id, product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, notes, created_by) VALUES (?, ?, ?, 'in', ?, 'sales_return', ?, ?, ?)`);
 
       let totalAmount = 0;
@@ -49,17 +50,53 @@ class ReturnRepository extends BaseRepository {
         const lineTotal = Number(item.qty) * unitPrice;
         totalAmount += lineTotal;
         insertItem.run(result.lastInsertRowid, item.product_id, item.qty, unitPrice);
-        updateStock.run(item.qty, item.product_id, invoice?.warehouse_id);
+        updateStock.run(item.product_id, invoice?.warehouse_id, item.qty);
         insertMovement.run(branch_id, item.product_id, invoice?.warehouse_id, item.qty, result.lastInsertRowid, `مرتجع بيع - ${returnNumber}`, created_by || null);
       }
 
       db.prepare('UPDATE sales_returns SET total_amount = ? WHERE id = ?').run(totalAmount, result.lastInsertRowid);
+
+      // Reverse the customer balance for the returned amount and post a balanced
+      // credit note journal entry, mirroring the sales invoice flow in reverse.
+      if (invoice.customer_id && totalAmount > 0) {
+        db.prepare('UPDATE customers SET current_balance = current_balance - ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(totalAmount, invoice.customer_id);
+      }
+
+      const { resolveAccount, createJournalEntry } = require('../utils/journal');
+      const { calculateTaxes } = require('../utils/tax');
+      const settings = db.prepare('SELECT tax_enabled, tax_country_code, tax_percentage, sales_tax_percentage FROM company_settings LIMIT 1').get() || {};
+      const taxRate = settings.tax_enabled ? Number(settings.sales_tax_percentage ?? settings.tax_percentage ?? 0) : 0;
+      const taxSummary = settings.tax_enabled ? calculateTaxes(db, { countryCode: settings.tax_country_code || 'SA', transactionType: 'sale', subtotal: totalAmount, fallbackRate: taxRate }) : { details: [], totalTax: 0 };
+      const taxAmount = taxSummary.totalTax;
+
+      const journalLines = [];
+      const revenueAccount = resolveAccount(db, '4110', 'revenue', 'مبيعات');
+      const taxAccount = resolveAccount(db, '2210', 'liability', 'قيمة المضافة');
+      const receivableAccount = resolveAccount(db, '1210', 'asset', 'عملاء');
+
+      if (receivableAccount) journalLines.push({ account_id: receivableAccount, debit: 0, credit: totalAmount + taxAmount });
+      if (revenueAccount) journalLines.push({ account_id: revenueAccount, debit: totalAmount, credit: 0 });
+      for (const detail of taxSummary.details) {
+        if (!taxAccount) break;
+        const amount = Number(detail.amount || 0);
+        if (amount > 0) journalLines.push({ account_id: taxAccount, debit: amount, credit: 0 });
+      }
+
+      createJournalEntry(db, {
+        branch_id,
+        description: `مرتجع بيع ${returnNumber}`,
+        reference_type: 'sales_return',
+        reference_id: result.lastInsertRowid,
+        lines: journalLines,
+        created_by,
+      });
+
       return { return_data: db.prepare('SELECT * FROM sales_returns WHERE id = ?').get(result.lastInsertRowid), items: this.getSalesReturnItems(result.lastInsertRowid) };
     })();
   }
 
   searchPurchaseReturns({ query = '', branch_id = 1, page = 1, limit = 20 } = {}) {
-    let sql = `SELECT r, pi.invoice_number, s.name AS supplier_name FROM purchase_returns r LEFT JOIN purchase_invoices pi ON pi.id = r.invoice_id LEFT JOIN suppliers s ON s.id = r.supplier_id WHERE r.is_deleted = 0 AND r.branch_id = ?`;
+    let sql = `SELECT r.*, pi.invoice_number, s.name AS supplier_name FROM purchase_returns r LEFT JOIN purchase_invoices pi ON pi.id = r.invoice_id LEFT JOIN suppliers s ON s.id = pi.supplier_id WHERE r.is_deleted = 0 AND r.branch_id = ?`;
     const params = [branch_id];
     if (query.trim()) {
       sql += ' AND (r.return_number LIKE ? OR pi.invoice_number LIKE ? OR s.name LIKE ?)';
@@ -77,7 +114,7 @@ class ReturnRepository extends BaseRepository {
   }
 
   getPurchaseReturn(id) {
-    return this.db.prepare(`SELECT r.*, s.name AS supplier_name, pi.invoice_number FROM purchase_returns r LEFT JOIN suppliers s ON s.id = r.supplier_id LEFT JOIN purchase_invoices pi ON pi.id = r.invoice_id WHERE r.id = ? AND r.is_deleted = 0`).get(id);
+    return this.db.prepare(`SELECT r.*, s.name AS supplier_name, pi.invoice_number FROM purchase_returns r LEFT JOIN purchase_invoices pi ON pi.id = r.invoice_id LEFT JOIN suppliers s ON s.id = pi.supplier_id WHERE r.id = ? AND r.is_deleted = 0`).get(id);
   }
 
   createPurchaseReturn({ branch_id = 1, invoice_id, date, items, created_by }) {
@@ -86,7 +123,7 @@ class ReturnRepository extends BaseRepository {
     const invoice = db.prepare('SELECT supplier_id, warehouse_id FROM purchase_invoices WHERE id = ?').get(invoice_id);
 
     return db.transaction(() => {
-      const result = db.prepare('INSERT INTO purchase_returns (branch_id, invoice_id, return_number, date, total_amount, created_by) VALUES (?, ?, ?, date("now"), 0, ?)').run(branch_id, invoice_id, returnNumber, created_by);
+      const result = db.prepare("INSERT INTO purchase_returns (branch_id, invoice_id, return_number, date, total_amount, created_by) VALUES (?, ?, ?, date('now'), 0, ?)").run(branch_id, invoice_id, returnNumber, created_by);
 
       const insertItem = db.prepare('INSERT INTO purchase_return_items (return_id, product_id, qty, unit_cost) VALUES (?, ?, ?, ?)');
       const updateStock = db.prepare('UPDATE stock_levels SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE product_id = ? AND warehouse_id = ?');

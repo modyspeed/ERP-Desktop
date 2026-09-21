@@ -19,7 +19,7 @@ const SalesReturnsPage = () => {
   const { currentBranch } = useSettings();
   const toast = useToast();
   const [result, setResult] = useState({ items: [], total: 0 });
-  const [customers, setCustomers] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [products, setProducts] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -39,8 +39,8 @@ const SalesReturnsPage = () => {
   }, [currentBranch?.id, query, toast]);
 
   const loadOptions = useCallback(async () => {
-    const custRes = await window.api?.customers?.search({ branch_id: currentBranch?.id || 1, limit: 100 });
-    if (custRes?.success) setCustomers(custRes.data.items || []);
+    const invRes = await window.api?.sales?.invoices({ branch_id: currentBranch?.id || 1, limit: 100 });
+    if (invRes?.success) setInvoices(invRes.data.items || []);
     const prodRes = await window.api?.products?.search({ branch_id: currentBranch?.id || 1, limit: 100 });
     if (prodRes?.success) setProducts(prodRes.data.items || []);
   }, [currentBranch?.id]);
@@ -96,7 +96,7 @@ const SalesReturnsPage = () => {
       </Card>
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="إضافة مرتجع بيع" maxWidth="800px">
         <form onSubmit={createReturn} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>الفاتورة الأصلية<Select required value={form.invoice_id} onChange={(e) => setForm({ ...form, invoice_id: e.target.value })} options={[{ value: "", label: "اختر فاتورة" }, ...customers.map((c) => ({ value: String(c.id), label: c.name }))]} /></label>
+          <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>الفاتورة الأصلية<Select required value={form.invoice_id} onChange={(e) => setForm({ ...form, invoice_id: e.target.value })} options={[{ value: "", label: "اختر فاتورة" }, ...invoices.map((inv) => ({ value: String(inv.id), label: `${inv.invoice_number}${inv.customer_name ? ` - ${inv.customer_name}` : ""}` }))]} /></label>
           <Input label="التاريخ" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
           <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
             <Select value={form.product_id} onChange={(e) => setForm({ ...form, product_id: e.target.value })} options={[{ value: "", label: "اختر صنفاً" }, ...products.map((p) => ({ value: String(p.id), label: `${p.name} - ${p.sale_price} ر.س` }))]} style={{ flex: 1 }} />

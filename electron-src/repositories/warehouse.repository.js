@@ -72,7 +72,7 @@ class WarehouseRepository extends BaseRepository {
         }
 
         updateSource.run(item.quantity, item.product_id, from_warehouse_id, item.quantity);
-        updateDestination.run(item.quantity, item.product_id, to_warehouse_id);
+        updateDestination.run(item.product_id, to_warehouse_id, item.quantity);
 
         const out = insertMovement.run(branch_id, item.product_id, from_warehouse_id, 'transfer_out', -item.quantity, `${transferNumber} to warehouse ${to_warehouse_id}`, currentUserId || _userId || null);
         const inward = insertMovement.run(branch_id, item.product_id, to_warehouse_id, 'transfer_in', item.quantity, `${transferNumber} from warehouse ${from_warehouse_id}`, currentUserId || _userId || null);
