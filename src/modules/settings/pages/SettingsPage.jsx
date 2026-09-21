@@ -7,6 +7,7 @@ import { useToast } from '../../../context/ToastContext';
 import Card from '../../../components/ui/Card';
 import Tabs from '../../../components/ui/Tabs';
 import Input from '../../../components/ui/Input';
+import Select from '../../../components/ui/Select';
 import Button from '../../../components/ui/Button';
 import Badge from '../../../components/ui/Badge';
 import Modal from '../../../components/ui/Modal';
@@ -352,6 +353,16 @@ const accountingDirectory = {
   },
 };
 
+const businessTypeOptions = [
+  { value: 'retail_wholesale' },
+  { value: 'manufacturing' },
+  { value: 'restaurants_cafes' },
+  { value: 'services_projects' },
+  { value: 'pharmacies' },
+  { value: 'rental' },
+  { value: 'general' },
+];
+
 const SettingsPage = () => {
   const { t, i18n } = useTranslation();
   const { settings, branches, updateSettings, uploadLogo, refreshBranches, refreshSettings } = useSettings();
@@ -390,6 +401,7 @@ const SettingsPage = () => {
   // Form states
   const [companyForm, setCompanyForm] = useState({
     company_name: '',
+    business_type: 'general',
     address: '',
     phone: '',
     email: '',
@@ -597,6 +609,7 @@ const SettingsPage = () => {
     if (settings) {
       setCompanyForm({
         company_name: settings.company_name || '',
+        business_type: settings.business_type || 'general',
         address: settings.address || '',
         phone: settings.phone || '',
         email: settings.email || '',
@@ -920,6 +933,16 @@ const SettingsPage = () => {
                 value={companyForm.company_name}
                 onChange={(e) => setCompanyForm({ ...companyForm, company_name: e.target.value })}
                 required
+              />
+
+              <Select
+                label={t('settings.businessType')}
+                value={companyForm.business_type}
+                onChange={(e) => setCompanyForm({ ...companyForm, business_type: e.target.value })}
+                options={businessTypeOptions.map((opt) => ({
+                  value: opt.value,
+                  label: t(`settings.businessTypes.${opt.value}`),
+                }))}
               />
 
               <Input

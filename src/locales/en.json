@@ -135,6 +135,17 @@
     "companyPhone": "Phone / Mobile",
     "companyEmail": "Official Email",
     "taxNumber": "Tax / VAT Number",
+    "businessType": "Business Type",
+    "businessTypeHint": "Defines the nature of the business; features will be tailored accordingly later",
+    "businessTypes": {
+      "retail_wholesale": "Retail / Wholesale",
+      "manufacturing": "Manufacturing",
+      "restaurants_cafes": "Restaurants & Cafes",
+      "services_projects": "Services & Projects",
+      "pharmacies": "Pharmacies",
+      "rental": "Rental",
+      "general": "General (All Features)"
+    },
     "currencyCode": "Default Currency",
     "defaultLanguage": "Default Language",
     "themeColor": "Primary Theme Color",

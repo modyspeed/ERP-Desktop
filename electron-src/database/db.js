@@ -77,6 +77,9 @@ function initDatabase() {
     if (!settingsColumns.includes('coa_template_code')) {
       dbInstance.exec("ALTER TABLE company_settings ADD COLUMN coa_template_code TEXT");
     }
+    if (!settingsColumns.includes('business_type')) {
+      dbInstance.exec("ALTER TABLE company_settings ADD COLUMN business_type TEXT DEFAULT 'general'");
+    }
     const quotationColumns = dbInstance.prepare('PRAGMA table_info(quotations)').all().map((column) => column.name);
     if (!quotationColumns.includes('notes')) dbInstance.exec('ALTER TABLE quotations ADD COLUMN notes TEXT');
     const purchaseOrderColumns = dbInstance.prepare('PRAGMA table_info(purchase_orders)').all().map((column) => column.name);

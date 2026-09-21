@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS company_settings (
   font_family TEXT DEFAULT 'Cairo',
   tax_type TEXT DEFAULT 'VAT',
   coa_template_code TEXT,
+  business_type TEXT DEFAULT 'general',
   tax_details TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

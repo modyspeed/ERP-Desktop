@@ -135,6 +135,17 @@
     "companyPhone": "رقم الهاتف / الجوال",
     "companyEmail": "البريد الإلكتروني الرسمي",
     "taxNumber": "الرقم الضريبي / السجل التجاري",
+    "businessType": "نوع النشاط",
+    "businessTypeHint": "يحدد طبيعة عمل المؤسسة؛ سيُبنى عليه تخصيص الميزات لاحقاً",
+    "businessTypes": {
+      "retail_wholesale": "تجارة تجزئة/جملة",
+      "manufacturing": "تصنيع",
+      "restaurants_cafes": "مطاعم وكافيهات",
+      "services_projects": "خدمات ومشاريع",
+      "pharmacies": "صيدليات",
+      "rental": "تأجير",
+      "general": "عام (كل الميزات)"
+    },
     "currencyCode": "العملة الافتراضية",
     "defaultLanguage": "اللغة الافتراضية للواجهة",
     "themeColor": "اللون الرئيسي للتطبيق",
