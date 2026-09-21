@@ -14,7 +14,7 @@ function registerBackupIpc(ipcMain) {
       return { success: false, error: 'Forbidden', code: 'FORBIDDEN' };
     }
     try {
-      const result = backupService.backup(userId);
+      const result = await backupService.backup(userId);
       return { success: true, data: result, message: 'Backup created' };
     } catch (err) { return { success: false, error: err.message }; }
   });
@@ -27,7 +27,7 @@ function registerBackupIpc(ipcMain) {
       return { success: false, error: 'Forbidden', code: 'FORBIDDEN' };
     }
     try {
-      const result = backupService.restore(filePath, userId);
+      const result = await backupService.restore(filePath, userId);
       return { success: true, data: result, message: 'Backup restored' };
     } catch (err) { return { success: false, error: err.message }; }
   });
@@ -54,7 +54,7 @@ function registerBackupIpc(ipcMain) {
     try {
       const { intervalMinutes = 60 } = data || {};
       const intervalId = setInterval(() => {
-        try { backupService.backup(userId); } catch {}
+        backupService.backup(userId).catch((err) => console.error('Scheduled backup failed:', err.message));
       }, intervalMinutes * 60 * 1000);
       return { success: true, intervalId, message: 'Backup scheduled' };
     } catch (err) { return { success: false, error: err.message }; }

@@ -1,11 +1,14 @@
 const path = require('path');
 const fs = require('fs');
 const { app } = require('electron');
-const { getDatabase, getDbPath } = require('../database/db');
+const { getDatabase, getDbPath, closeDatabase } = require('../database/db');
 const auditRepository = require('../repositories/audit.repository');
 
 class BackupService {
   getBackupDir() {
+    // Allow tests / advanced tooling to redirect the backup folder.
+    const override = process.env.ERP_BACKUP_DIR;
+    if (override) return override;
     const userDataPath = app.getPath('userData');
     return path.join(userDataPath, 'backups');
   }
@@ -21,7 +24,7 @@ class BackupService {
     }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
 
-  backup(currentUserId) {
+  async backup(currentUserId) {
     const backupDir = this.getBackupDir();
     if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
 
@@ -32,10 +35,15 @@ class BackupService {
 
     if (!fs.existsSync(dbPath)) throw new Error('Database file not found');
 
+    // better-sqlite3's backup() is async and resolves once the copy is fully
+    // flushed to disk. It copies the source database into the destination path
+    // (creating/overwriting it) and handles the live WAL automatically.
     const sourceDb = getDatabase();
-    const backupDb = new (require('better-sqlite3'))(backupPath);
-    sourceDb.backup(backupPath);
-    backupDb.close();
+    await sourceDb.backup(backupPath);
+
+    if (!fs.existsSync(backupPath) || fs.statSync(backupPath).size === 0) {
+      throw new Error('Backup file was not written');
+    }
 
     auditRepository.log({
       userId: currentUserId || null,
@@ -49,15 +57,38 @@ class BackupService {
     return { file_name: backupFileName, file_path: backupPath, size: fs.statSync(backupPath).size, created_at: new Date().toISOString() };
   }
 
-  restore(backupPath, currentUserId) {
+  async restore(backupPath, currentUserId) {
     if (!fs.existsSync(backupPath)) throw new Error('Backup file not found');
 
     const dbPath = getDbPath();
-    const backupDb = new (require('better-sqlite3'))(backupPath);
 
-    getDatabase().pragma('wal_checkpoint(TRUNCATE)');
-    backupDb.backup(dbPath);
-    backupDb.close();
+    // Validate the backup before touching the live database, so a corrupt or
+    // truncated file can never destroy the working database.
+    const Database = require('better-sqlite3');
+    const probe = new Database(backupPath, { readonly: true });
+    const integrity = probe.prepare('PRAGMA quick_check').get();
+    probe.close();
+    if (!integrity || integrity.quick_check !== 'ok') {
+      throw new Error(`Backup file is corrupt or not a valid database: ${integrity && integrity.quick_check}`);
+    }
+
+    // The live connection must be released before replacing the file,
+    // otherwise the open handle and the WAL/SHM side files keep the
+    // post-backup data alive and the restore silently does nothing.
+    closeDatabase();
+
+    for (const suffix of ['-wal', '-shm', '-journal']) {
+      const sideFile = dbPath + suffix;
+      if (fs.existsSync(sideFile)) {
+        try { fs.unlinkSync(sideFile); } catch { /* best effort */ }
+      }
+    }
+
+    // Byte-level replacement now that no connection holds the file.
+    fs.copyFileSync(backupPath, dbPath);
+
+    // Re-open so every subsequent query sees the restored data.
+    getDatabase();
 
     auditRepository.log({
       userId: currentUserId || null,

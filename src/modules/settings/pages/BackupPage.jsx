@@ -33,9 +33,16 @@ const BackupPage = () => {
   const doRestore = async (filePath) => {
     setRestoringId(filePath);
     const response = await window.api?.backup?.restore(filePath);
-    if (response?.success) { toast.success(response.message); }
-    else toast.error(response?.error);
-    setRestoringId(null);
+    if (response?.success) {
+      toast.success(response.message || t('backup.restoreCompleted'));
+      // The restore replaces the whole database (settings, products, everything),
+      // so every cached screen is now stale. Reload the app to pick up the
+      // restored data instead of showing a mix of old and new rows.
+      setTimeout(() => window.location.reload(), 900);
+    } else {
+      toast.error(response?.error);
+      setRestoringId(null);
+    }
   };
 
   const doDelete = async (filePath) => {

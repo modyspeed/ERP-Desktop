@@ -376,4 +376,35 @@ function runDemoInvoiceSeeds(db) {
   })();
 }
 
-module.exports = { runSeeders, runDemoSeeds, runAccountingCatalogSeeds, runTaxRuleSeeds, runTaxTemplateSeeds, runDemoInvoiceSeeds };
+function ensureBackupPermissions(db) {
+  // The generic permission grid only covers view/create/edit/delete/print/export.
+  // Backup additionally needs "restore" (overwrite the live database from a copy)
+  // and "manage" (schedule automatic backups). Seed them idempotently so both
+  // fresh databases and already-seeded ones (where runSeeders returns early) get them.
+  const insertPerm = db.prepare('INSERT OR IGNORE INTO permissions (module, action, description) VALUES (?, ?, ?)');
+  insertPerm.run('backup', 'restore', 'استعادة النسخ الاحتياطي');
+  insertPerm.run('backup', 'manage', 'إدارة وجدولة النسخ الاحتياطي');
+
+  // Grant both actions to every system role that may already create backups
+  // (the seeded Admin). On a fresh database roles do not exist yet, so nothing
+  // is granted here; runSeeders' admin loop assigns every permission instead.
+  const grant = db.prepare('INSERT OR IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)');
+  const permIds = db
+    .prepare("SELECT id FROM permissions WHERE module = 'backup' AND action IN ('restore', 'manage')")
+    .all()
+    .map((row) => row.id);
+  const backupAdminRoles = db
+    .prepare(`
+      SELECT DISTINCT rp.role_id AS id
+      FROM role_permissions rp
+      JOIN permissions p ON p.id = rp.permission_id
+      JOIN roles r ON r.id = rp.role_id
+      WHERE p.module = 'backup' AND p.action = 'create' AND r.is_system = 1
+    `)
+    .all();
+  for (const role of backupAdminRoles) {
+    for (const permId of permIds) grant.run(role.id, permId);
+  }
+}
+
+module.exports = { runSeeders, runDemoSeeds, runAccountingCatalogSeeds, runTaxRuleSeeds, runTaxTemplateSeeds, runDemoInvoiceSeeds, ensureBackupPermissions };

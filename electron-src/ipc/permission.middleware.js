@@ -5,13 +5,11 @@ const { getDatabase } = require('../database/db');
  * Extracts user from event.sender session, checks permissions before handler execution
  */
 class PermissionMiddleware {
-  constructor() {
-    this.db = null;
-  }
 
   getDb() {
-    if (!this.db) this.db = getDatabase();
-    return this.db;
+    // Never cache the connection: a backup restore closes and reopens the
+    // database, so a cached handle would be dead for every later check.
+    return getDatabase();
   }
 
   /**
