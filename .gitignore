@@ -16,6 +16,8 @@ Thumbs.db
 .vscode
 electron_err.log
 electron_out.log
+electron_run_err.log
+electron_run_out.log
 test_electron.log
 test_electron_err.log
 test_db.js
