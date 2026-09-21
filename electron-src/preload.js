@@ -147,6 +147,13 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id) => invokeWithUser('categories:delete', id),
   },
 
+  tables: {
+    list: (params) => invokeWithUser('tables:list', params),
+    save: (data) => invokeWithUser('tables:save', data),
+    updateStatus: (params) => invokeWithUser('tables:update-status', params),
+    delete: (params) => invokeWithUser('tables:delete', params),
+  },
+
   taxes: {
     list: (params) => invokeWithUser('taxes:list', params),
     update: (data) => invokeWithUser('taxes:update', data),

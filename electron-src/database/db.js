@@ -9,7 +9,7 @@ try {
 } catch (e) {
   electronApp = null;
 }
-const { runSeeders, runDemoSeeds, runAccountingCatalogSeeds, runTaxRuleSeeds, runTaxTemplateSeeds, runDemoInvoiceSeeds, ensureBackupPermissions } = require('./seeders/001_initial_seeds');
+const { runSeeders, runDemoSeeds, runTableSeeds, runAccountingCatalogSeeds, runTaxRuleSeeds, runTaxTemplateSeeds, runDemoInvoiceSeeds, ensureBackupPermissions } = require('./seeders/001_initial_seeds');
 
 let dbInstance = null;
 
@@ -148,6 +148,7 @@ function initDatabase() {
     ensureBackupPermissions(dbInstance);
     runSeeders(dbInstance);
     runDemoSeeds(dbInstance);
+    runTableSeeds(dbInstance);
     runAccountingCatalogSeeds(dbInstance);
     runTaxRuleSeeds(dbInstance);
     runTaxTemplateSeeds(dbInstance);

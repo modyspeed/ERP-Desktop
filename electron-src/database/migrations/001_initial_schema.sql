@@ -439,6 +439,22 @@ CREATE TABLE IF NOT EXISTS pos_transactions (
   FOREIGN KEY (invoice_id) REFERENCES sales_invoices(id)
 );
 
+-- Restaurant table management (visible only when business_type = 'restaurants_cafes')
+CREATE TABLE IF NOT EXISTS tables (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  branch_id INTEGER DEFAULT 1,
+  table_number TEXT NOT NULL,
+  seats_count INTEGER DEFAULT 2,
+  status TEXT DEFAULT 'available' CHECK (status IN ('available', 'occupied', 'reserved')),
+  created_by INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  is_deleted INTEGER DEFAULT 0,
+  FOREIGN KEY (branch_id) REFERENCES branches(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tables_branch ON tables(branch_id);
+
 -- 12.8 Accounting
 CREATE TABLE IF NOT EXISTS chart_of_accounts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

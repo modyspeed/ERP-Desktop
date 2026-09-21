@@ -225,6 +225,35 @@ function runDemoSeeds(db) {
   })();
 }
 
+function runTableSeeds(db) {
+  // Restaurant demo tables - only seeded when the business type is restaurants/cafes
+  const settings = db.prepare('SELECT business_type FROM company_settings LIMIT 1').get();
+  if (!settings || settings.business_type !== 'restaurants_cafes') return;
+
+  const branch = db.prepare('SELECT id FROM branches WHERE is_main_branch = 1 ORDER BY id LIMIT 1').get();
+  if (!branch) return;
+
+  const hasTables = db.prepare('SELECT COUNT(*) AS total FROM tables WHERE is_deleted = 0').get().total;
+  if (hasTables > 0) return;
+
+  const insertTable = db.prepare(
+    'INSERT INTO tables (branch_id, table_number, seats_count, status, created_by) VALUES (?, ?, ?, ?, 1)'
+  );
+  const demoTables = [
+    ['1', 4, 'available'],
+    ['2', 2, 'occupied'],
+    ['3', 6, 'available'],
+    ['4', 4, 'reserved'],
+    ['5', 2, 'available'],
+    ['6', 8, 'occupied'],
+  ];
+  db.transaction(() => {
+    for (const [number, seats, status] of demoTables) {
+      insertTable.run(branch.id, number, seats, status);
+    }
+  })();
+}
+
 function runAccountingCatalogSeeds(db) {
   const catalogs = [
     {
@@ -407,4 +436,4 @@ function ensureBackupPermissions(db) {
   }
 }
 
-module.exports = { runSeeders, runDemoSeeds, runAccountingCatalogSeeds, runTaxRuleSeeds, runTaxTemplateSeeds, runDemoInvoiceSeeds, ensureBackupPermissions };
+module.exports = { runSeeders, runDemoSeeds, runTableSeeds, runAccountingCatalogSeeds, runTaxRuleSeeds, runTaxTemplateSeeds, runDemoInvoiceSeeds, ensureBackupPermissions };

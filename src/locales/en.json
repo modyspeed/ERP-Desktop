@@ -16,6 +16,7 @@
     "yes": "Yes",
     "no": "No",
     "all": "All",
+    "required": "Required",
     "loading": "Loading...",
     "noData": "No data available",
     "confirmDelete": "Are you sure you want to delete this?",
@@ -51,7 +52,25 @@
     "roles": "Roles Matrix",
     "logout": "Sign Out",
     "warehouses": "Warehouses",
-    "stockTransfer": "Stock Transfer"
+    "stockTransfer": "Stock Transfer",
+    "tables": "Tables"
+  },
+  "tables": {
+    "title": "Table Management",
+    "subtitle": "Track and update dining table status manually",
+    "addTable": "Add Table",
+    "editTable": "Edit Table",
+    "tableNumber": "Table Number",
+    "seatsCount": "Seats Count",
+    "tableStatus": "Status",
+    "statusAvailable": "Available",
+    "statusOccupied": "Occupied",
+    "statusReserved": "Reserved",
+    "empty": "No tables registered yet",
+    "emptyHint": "Add dining tables to start tracking their status",
+    "clickToChangeStatus": "Click a table to change its status",
+    "seats": "seats",
+    "notAvailable": "The tables section is only available for the restaurants business type"
   },
   "auth": {
     "loginTitle": "Sign In",

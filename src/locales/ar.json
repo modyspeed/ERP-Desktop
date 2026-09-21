@@ -16,6 +16,7 @@
     "yes": "نعم",
     "no": "لا",
     "all": "الكل",
+    "required": "مطلوب",
     "loading": "جاري التحميل...",
     "noData": "لا توجد بيانات متاحة",
     "confirmDelete": "هل أنت متأكد من رغبتك في الحذف؟",
@@ -51,7 +52,25 @@
     "roles": "الأدوار والمصفوفة",
     "logout": "تسجيل الخروج",
     "warehouses": "المستودعات",
-    "stockTransfer": "تحويل المخزون"
+    "stockTransfer": "تحويل المخزون",
+    "tables": "الطاولات"
+  },
+  "tables": {
+    "title": "إدارة الطاولات",
+    "subtitle": "متابعة حالة طاولات الصالة وتحديثها يدوياً",
+    "addTable": "إضافة طاولة",
+    "editTable": "تعديل الطاولة",
+    "tableNumber": "رقم الطاولة",
+    "seatsCount": "عدد المقاعد",
+    "tableStatus": "الحالة",
+    "statusAvailable": "متاحة",
+    "statusOccupied": "مشغولة",
+    "statusReserved": "محجوزة",
+    "empty": "لا توجد طاولات مسجلة بعد",
+    "emptyHint": "أضف طاولات الصالة لبدء متابعة حالتها",
+    "clickToChangeStatus": "اضغط على الطاولة لتغيير حالتها",
+    "seats": "كرسي",
+    "notAvailable": "قسم الطاولات متاح فقط لنشاط المطاعم والكافيهات"
   },
   "auth": {
     "loginTitle": "تسجيل الدخول",
