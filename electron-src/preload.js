@@ -231,4 +231,11 @@ contextBridge.exposeInMainWorld('api', {
     printReceipt: (params) => invokeWithUser('hardware:print-receipt', params),
     openCashDrawer: () => invokeWithUser('hardware:open-cashdrawer'),
   },
+
+  pos: {
+    activeSession: (params) => invokeWithUser('pos:active-session', params),
+    openSession: (data) => invokeWithUser('pos:open-session', data),
+    closeSession: (data) => invokeWithUser('pos:close-session', data),
+    sessionStats: (params) => invokeWithUser('pos:session-stats', params),
+  },
 });

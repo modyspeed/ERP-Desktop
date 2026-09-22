@@ -4,6 +4,7 @@ const { generateDocumentNumber } = require('../utils/numbering');
 const { calculateTaxes } = require('../utils/tax');
 const { resolveAccount, createJournalEntry } = require('../utils/journal');
 const auditRepository = require('./audit.repository');
+const posRepository = require('./pos.repository');
 
 class SalesRepository extends BaseRepository {
   constructor() {
@@ -37,7 +38,7 @@ class SalesRepository extends BaseRepository {
     };
   }
 
-  createInvoice({ branch_id = 1, customer_id, warehouse_id, items, discount = 0, paid_amount = 0, invoice_type = 'cash', source = 'manual', table_id, tax_rule_ids = [], tax_overrides = [], created_by }) {
+  createInvoice({ branch_id = 1, customer_id, warehouse_id, items, discount = 0, paid_amount = 0, invoice_type = 'cash', source = 'manual', table_id, pos_session_id, tax_rule_ids = [], tax_overrides = [], created_by }) {
     const db = getDatabase();
     if (!warehouse_id || !items?.length) throw new Error('المستودع والأصناف مطلوبان');
 
@@ -127,6 +128,20 @@ class SalesRepository extends BaseRepository {
           recordId: tableId,
           oldValue: existingTable,
           newValue: freedTable,
+        });
+      }
+
+      // تسجيل معاملة الوردية (pos_transactions) عند البيع من خلال وردية POS مفتوحة
+      if (pos_session_id && paymentStatus === 'paid') {
+        const session = posRepository.getSessionById(pos_session_id);
+        if (!session || session.status !== 'open') throw new Error('وردية الكاشير مغلقة أو غير موجودة');
+        if (Number(session.cashier_id) !== Number(created_by)) throw new Error('الوردية لا تخص الكاشير الحالي');
+        posRepository.recordTransaction({
+          session_id: session.id,
+          invoice_id: invoice.lastInsertRowid,
+          payment_method: 'cash',
+          amount_paid: paid,
+          change_due: Math.max(0, paid - total),
         });
       }
 

@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Armchair,
   Banknote,
   Delete,
   Grid2X2,
+  LogOut,
   Minus,
   Plus,
   Printer,
@@ -337,6 +338,21 @@ const PosPage = () => {
   const [paidAmount, setPaidAmount] = useState("");
   const [saving, setSaving] = useState(false);
   const [table, setTable] = useState(null);
+  const [posSession, setPosSession] = useState(null);
+
+  const loadPosSession = useCallback(async () => {
+    try {
+      const response = await window.api?.pos?.activeSession({ cashier_id: user?.id });
+      if (response?.success) setPosSession(response.data);
+      else setPosSession(null);
+    } catch {
+      setPosSession(null);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadPosSession();
+  }, [loadPosSession]);
 
   useEffect(() => {
     const stateTable = location.state?.table;
@@ -452,6 +468,7 @@ const PosPage = () => {
       invoice_type: "cash",
       source: "pos",
       table_id: table?.id || null,
+      pos_session_id: posSession?.id || null,
       created_by: user?.id,
     });
     if (response?.success) {
@@ -467,6 +484,7 @@ const PosPage = () => {
       setPaidAmount("");
       setSearch("");
       setTable(null);
+      loadPosSession();
       navigate("/pos", { replace: true });
     } else toast.error(response?.error || "تعذر إتمام عملية البيع");
     setSaving(false);
@@ -539,6 +557,17 @@ const PosPage = () => {
                 <X size={13} />
               </button>
             </div>
+          )}
+          {posSession && (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={LogOut}
+              onClick={() => navigate("/pos/session")}
+              title={t("pos.closeSession")}
+            >
+              {t("pos.closeSession")}
+            </Button>
           )}
           <div style={{ marginInlineStart: table ? 0 : "auto", minWidth: 180 }}>
             <Input

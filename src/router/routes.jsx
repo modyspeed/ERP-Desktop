@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MainLayout from '../layouts/MainLayout';
 import AuthLayout from '../layouts/AuthLayout';
@@ -22,6 +22,7 @@ import StockTransferPage from '../modules/inventory/pages/StockTransferPage';
 import CustomersPage from '../modules/sales/pages/CustomersPage';
 import SalesPage from '../modules/sales/pages/SalesPage';
 import PosPage from '../modules/pos/pages/PosPage';
+import PosSessionPage from '../modules/pos/pages/PosSessionPage';
 import TablesPage from '../modules/pos/pages/TablesPage';
 import SuppliersPage from '../modules/purchases/pages/SuppliersPage';
 import PurchaseInvoicesPage from '../modules/purchases/pages/PurchaseInvoicesPage';
@@ -84,6 +85,53 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
+// POS session guard: blocks the selling screen until the cashier opens a shift.
+// Any navigation to /pos without an open session is redirected to the open-shift screen.
+const PosSessionGuard = ({ children }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [checking, setChecking] = useState(true);
+  const [hasSession, setHasSession] = useState(false);
+
+  const checkSession = useCallback(async () => {
+    try {
+      const response = await window.api?.pos?.activeSession({ cashier_id: user?.id });
+      setHasSession(Boolean(response?.success && response.data));
+    } catch {
+      setHasSession(false);
+    } finally {
+      setChecking(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  useEffect(() => {
+    if (!checking && !hasSession) {
+      navigate('/pos/session', { replace: true });
+    }
+  }, [checking, hasSession, navigate]);
+
+  if (checking || !hasSession) {
+    return (
+      <div
+        style={{
+          minHeight: '60vh',
+          display: 'grid',
+          placeItems: 'center',
+          backgroundColor: 'var(--bg-app)',
+        }}
+      >
+        <LoadingSpinner text="جاري التحقق من الوردية..." size={36} />
+      </div>
+    );
+  }
+
+  return children;
+};
+
 export const AppRoutes = () => {
   return (
     <Routes>
@@ -96,6 +144,18 @@ export const AppRoutes = () => {
               <LoginPage />
             </AuthLayout>
           </PublicRoute>
+        }
+      />
+
+      {/* Session-protected POS route: no selling without an open cashier shift */}
+      <Route
+        path="/pos"
+        element={
+          <ProtectedRoute>
+            <PosSessionGuard>
+              <PosPage />
+            </PosSessionGuard>
+          </ProtectedRoute>
         }
       />
 
@@ -121,7 +181,7 @@ export const AppRoutes = () => {
         {/* Future Phase Placeholders */}
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/customers" element={<CustomersPage />} />
-        <Route path="/pos" element={<PosPage />} />
+        <Route path="/pos/session" element={<PosSessionPage />} />
         <Route path="/pos/tables" element={<TablesPage />} />
         <Route path="/purchases" element={<PurchaseInvoicesPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
