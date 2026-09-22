@@ -55,9 +55,16 @@
     "stockTransfer": "Stock Transfer",
     "tables": "Tables"
   },
+  "pos": {
+    "title": "Point of Sale",
+    "subtitle": "Quick sales and cart management",
+    "searchPlaceholder": "Product name or barcode",
+    "exitTable": "Exit table mode",
+    "tableFreed": "Table is available again"
+  },
   "tables": {
     "title": "Table Management",
-    "subtitle": "Track and update dining table status manually",
+    "subtitle": "Track dining table status and open linked invoices",
     "addTable": "Add Table",
     "editTable": "Edit Table",
     "tableNumber": "Table Number",
@@ -68,7 +75,8 @@
     "statusReserved": "Reserved",
     "empty": "No tables registered yet",
     "emptyHint": "Add dining tables to start tracking their status",
-    "clickToChangeStatus": "Click a table to change its status",
+    "clickHint": "Click an available table to open a linked invoice, or click an occupied/reserved table to change its status",
+    "openInvoice": "Open invoice",
     "seats": "seats",
     "notAvailable": "The tables section is only available for the restaurants business type"
   },

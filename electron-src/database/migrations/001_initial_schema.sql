@@ -282,12 +282,14 @@ CREATE TABLE IF NOT EXISTS sales_invoices (
   payment_status TEXT DEFAULT 'paid', -- 'paid', 'partial', 'unpaid'
   invoice_type TEXT DEFAULT 'cash', -- 'cash', 'credit'
   source TEXT DEFAULT 'manual', -- 'pos', 'manual'
+  table_id INTEGER, -- ربط الفاتورة بطاولة المطعم (tables.id)
   created_by INTEGER,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   is_deleted INTEGER DEFAULT 0,
   FOREIGN KEY (customer_id) REFERENCES customers(id),
-  FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
+  FOREIGN KEY (warehouse_id) REFERENCES warehouses(id),
+  FOREIGN KEY (table_id) REFERENCES tables(id)
 );
 
 CREATE TABLE IF NOT EXISTS sales_invoice_items (

@@ -3,6 +3,7 @@ const { getDatabase } = require('../database/db');
 const { generateDocumentNumber } = require('../utils/numbering');
 const { calculateTaxes } = require('../utils/tax');
 const { resolveAccount, createJournalEntry } = require('../utils/journal');
+const auditRepository = require('./audit.repository');
 
 class SalesRepository extends BaseRepository {
   constructor() {
@@ -36,7 +37,7 @@ class SalesRepository extends BaseRepository {
     };
   }
 
-  createInvoice({ branch_id = 1, customer_id, warehouse_id, items, discount = 0, paid_amount = 0, invoice_type = 'cash', source = 'manual', tax_rule_ids = [], tax_overrides = [], created_by }) {
+  createInvoice({ branch_id = 1, customer_id, warehouse_id, items, discount = 0, paid_amount = 0, invoice_type = 'cash', source = 'manual', table_id, tax_rule_ids = [], tax_overrides = [], created_by }) {
     const db = getDatabase();
     if (!warehouse_id || !items?.length) throw new Error('المستودع والأصناف مطلوبان');
 
@@ -71,9 +72,12 @@ class SalesRepository extends BaseRepository {
     const remaining = total - paid;
     const paymentStatus = remaining <= 0 ? 'paid' : paid > 0 ? 'partial' : 'unpaid';
     const invoiceNumber = generateDocumentNumber('sales_invoices', 'invoice_number', prefix);
+    const tableId = table_id ? Number(table_id) : null;
+    const existingTable = tableId ? db.prepare('SELECT * FROM tables WHERE id = ? AND is_deleted = 0').get(tableId) : null;
+    if (tableId && !existingTable) throw new Error('الطاولة المرتبطة بالفاتورة غير موجودة');
 
     return db.transaction(() => {
-      const invoice = db.prepare(`INSERT INTO sales_invoices (branch_id, invoice_number, customer_id, warehouse_id, date, subtotal, discount, tax_amount, tax_details, total, paid_amount, remaining_amount, payment_status, invoice_type, source, created_by) VALUES (?, ?, ?, ?, date('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(branch_id, invoiceNumber, customer_id || null, warehouse_id, subtotal, safeDiscount, taxAmount, JSON.stringify(taxSummary.details), total, paid, remaining, paymentStatus, invoice_type, source, created_by || null);
+      const invoice = db.prepare(`INSERT INTO sales_invoices (branch_id, invoice_number, customer_id, warehouse_id, date, subtotal, discount, tax_amount, tax_details, total, paid_amount, remaining_amount, payment_status, invoice_type, source, table_id, created_by) VALUES (?, ?, ?, ?, date('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(branch_id, invoiceNumber, customer_id || null, warehouse_id, subtotal, safeDiscount, taxAmount, JSON.stringify(taxSummary.details), total, paid, remaining, paymentStatus, invoice_type, source, tableId, created_by || null);
       const insertItem = db.prepare('INSERT INTO sales_invoice_items (invoice_id, product_id, qty, unit_price, discount, tax, line_total) VALUES (?, ?, ?, ?, 0, 0, ?)');
       const updateStock = db.prepare('UPDATE stock_levels SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE product_id = ? AND warehouse_id = ? AND quantity >= ?');
       const insertMovement = db.prepare(`INSERT INTO stock_movements (branch_id, product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, notes, created_by) VALUES (?, ?, ?, 'out', ?, 'sales_invoice', ?, ?, ?)`);
@@ -111,6 +115,20 @@ class SalesRepository extends BaseRepository {
         lines: journalLines,
         created_by,
       });
+
+      // عند دفع فاتورة مرتبطة بطاولة، تعود الطاولة لحالة "متاحة" تلقائياً
+      if (tableId && paymentStatus === 'paid') {
+        const freedTable = { ...existingTable, status: 'available' };
+        db.prepare("UPDATE tables SET status = 'available', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND is_deleted = 0").run(tableId);
+        auditRepository.log({
+          userId: created_by || null,
+          module: 'tables',
+          action: 'update_status',
+          recordId: tableId,
+          oldValue: existingTable,
+          newValue: freedTable,
+        });
+      }
 
       return db.prepare('SELECT * FROM sales_invoices WHERE id = ?').get(invoice.lastInsertRowid);
     })();

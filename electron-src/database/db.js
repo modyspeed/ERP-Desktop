@@ -86,6 +86,10 @@ function initDatabase() {
     if (!purchaseOrderColumns.includes('notes')) dbInstance.exec('ALTER TABLE purchase_orders ADD COLUMN notes TEXT');
     const salesInvoiceColumns = dbInstance.prepare('PRAGMA table_info(sales_invoices)').all().map((column) => column.name);
     if (!salesInvoiceColumns.includes('tax_details')) dbInstance.exec('ALTER TABLE sales_invoices ADD COLUMN tax_details TEXT');
+    if (!salesInvoiceColumns.includes('table_id')) {
+      dbInstance.exec('ALTER TABLE sales_invoices ADD COLUMN table_id INTEGER');
+      dbInstance.exec('CREATE INDEX IF NOT EXISTS idx_sales_invoices_table ON sales_invoices(table_id)');
+    }
     const purchaseInvoiceColumns = dbInstance.prepare('PRAGMA table_info(purchase_invoices)').all().map((column) => column.name);
     if (!purchaseInvoiceColumns.includes('tax_details')) dbInstance.exec('ALTER TABLE purchase_invoices ADD COLUMN tax_details TEXT');
     

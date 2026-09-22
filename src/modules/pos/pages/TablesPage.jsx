@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Armchair, Plus, Trash2, Users } from 'lucide-react';
+import { Armchair, Plus, Receipt, Trash2, Users } from 'lucide-react';
 import { useSettings } from '../../../context/SettingsContext';
 import { useToast } from '../../../context/ToastContext';
 import Button from '../../../components/ui/Button';
@@ -27,6 +28,7 @@ const TablesPage = () => {
   const { t } = useTranslation();
   const { currentBranch, settings } = useSettings();
   const toast = useToast();
+  const navigate = useNavigate();
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -112,6 +114,31 @@ const TablesPage = () => {
     }
   };
 
+  const openTableInvoice = async (table) => {
+    setBusyId(table.id);
+    try {
+      const response = await window.api?.tables?.updateStatus({ id: table.id, status: 'occupied' });
+      if (response?.success) {
+        setTables((current) =>
+          current.map((item) => (item.id === table.id ? { ...item, status: 'occupied' } : item))
+        );
+        toast.success(`${t('tables.tableNumber')} ${table.table_number}: ${t('tables.statusOccupied')}`);
+        navigate('/pos', { state: { table: { id: table.id, number: table.table_number } } });
+      } else {
+        toast.error(response?.error);
+      }
+    } catch (err) {
+      toast.error(err?.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleTableClick = (table) => {
+    if (table.status === 'available') openTableInvoice(table);
+    else cycleStatus(table);
+  };
+
   const confirmDelete = async () => {
     if (!deleteId) return;
     try {
@@ -173,7 +200,7 @@ const TablesPage = () => {
         ) : (
           <>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-              {t('tables.clickToChangeStatus')}
+              {t('tables.clickHint')}
             </p>
             <div
               style={{
@@ -189,7 +216,7 @@ const TablesPage = () => {
                 return (
                   <div
                     key={table.id}
-                    onClick={() => !isBusy && cycleStatus(table)}
+                    onClick={() => !isBusy && handleTableClick(table)}
                     style={{
                       position: 'relative',
                       borderRadius: '16px',
@@ -270,6 +297,33 @@ const TablesPage = () => {
                       <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#ffffff' }} />
                       {statusLabel}
                     </span>
+                    {table.status === 'available' && (
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (!isBusy) openTableInvoice(table);
+                        }}
+                        title={t('tables.openInvoice')}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          marginTop: '12px',
+                          insetInlineStart: '0',
+                          padding: '6px 12px',
+                          borderRadius: '9999px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          color: color.base,
+                          border: `1px solid ${color.base}`,
+                          background: 'rgba(255, 255, 255, 0.85)',
+                          cursor: isBusy ? 'wait' : 'pointer',
+                        }}
+                      >
+                        <Receipt size={13} />
+                        {t('tables.openInvoice')}
+                      </button>
+                    )}
                     <button
                       onClick={(event) => {
                         event.stopPropagation();

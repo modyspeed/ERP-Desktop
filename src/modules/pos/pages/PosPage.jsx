@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
+  Armchair,
   Banknote,
   Delete,
   Grid2X2,
@@ -9,7 +11,9 @@ import {
   Search,
   ShoppingCart,
   Trash2,
+  X,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../context/AuthContext";
 import { useSettings } from "../../../context/SettingsContext";
 import { useToast } from "../../../context/ToastContext";
@@ -320,6 +324,9 @@ const PosPage = () => {
   const { currentBranch, settings } = useSettings();
   const { user } = useAuth();
   const toast = useToast();
+  const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [options, setOptions] = useState({ products: [], warehouses: [] });
   const [taxRules, setTaxRules] = useState([]);
   const [selectedTaxRuleIds, setSelectedTaxRuleIds] = useState([]);
@@ -329,6 +336,32 @@ const PosPage = () => {
   const [cart, setCart] = useState([]);
   const [paidAmount, setPaidAmount] = useState("");
   const [saving, setSaving] = useState(false);
+  const [table, setTable] = useState(null);
+
+  useEffect(() => {
+    const stateTable = location.state?.table;
+    const queryTableId = Number(new URLSearchParams(location.search).get("table") || 0);
+
+    if (stateTable?.id) {
+      setTable({ id: Number(stateTable.id), number: stateTable.number });
+      return;
+    }
+    if (!queryTableId) {
+      setTable(null);
+      return;
+    }
+    window.api?.tables
+      ?.list({ branch_id: currentBranch?.id || 1 })
+      .then((response) => {
+        const found = response?.data?.find((item) => item.id === queryTableId);
+        if (found) setTable({ id: found.id, number: found.table_number });
+      });
+  }, [location.state, location.search, currentBranch?.id]);
+
+  const exitTableMode = () => {
+    setTable(null);
+    navigate("/pos", { replace: true });
+  };
 
   useEffect(() => {
     window.api?.sales?.options(currentBranch?.id || 1).then((response) => {
@@ -418,10 +451,12 @@ const PosPage = () => {
       tax_overrides: selectedTaxRuleIds.map((id) => ({ id, rate: taxValues[id]?.rate, value: taxValues[id]?.value === '' ? undefined : taxValues[id]?.value })),
       invoice_type: "cash",
       source: "pos",
+      table_id: table?.id || null,
       created_by: user?.id,
     });
     if (response?.success) {
       toast.success(`تمت عملية البيع ${response.data.invoice_number}`);
+      if (table) toast.info(`${t('pos.tableFreed')}: ${t('tables.tableNumber')} ${table.number}`);
       await window.api.hardware.openCashDrawer();
       await window.api.hardware.printReceipt({
         invoice: response.data,
@@ -431,6 +466,8 @@ const PosPage = () => {
       setCart([]);
       setPaidAmount("");
       setSearch("");
+      setTable(null);
+      navigate("/pos", { replace: true });
     } else toast.error(response?.error || "تعذر إتمام عملية البيع");
     setSaving(false);
   };
@@ -461,17 +498,53 @@ const PosPage = () => {
                 color: "var(--text-main)",
               }}
             >
-              نقطة البيع
+              {t("pos.title")}
             </h1>
             <p style={{ color: "var(--text-muted)", marginTop: 4 }}>
-              بيع سريع وإدارة السلة
+              {t("pos.subtitle")}
             </p>
           </div>
-          <div style={{ marginInlineStart: "auto", minWidth: 180 }}>
+          {table && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                marginInlineStart: "auto",
+                padding: "6px 10px 6px 12px",
+                borderRadius: 9999,
+                border: "1px solid #d97706",
+                backgroundColor: "#fef3c7",
+                color: "#92400e",
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              <Armchair size={15} />
+              <span>{`${t("tables.tableNumber")} ${table.number}`}</span>
+              <button
+                onClick={exitTableMode}
+                title={t("pos.exitTable")}
+                style={{
+                  display: "grid",
+                  placeItems: "center",
+                  padding: 2,
+                  border: "none",
+                  borderRadius: 9999,
+                  background: "rgba(146, 64, 14, 0.12)",
+                  color: "#92400e",
+                  cursor: "pointer",
+                }}
+              >
+                <X size={13} />
+              </button>
+            </div>
+          )}
+          <div style={{ marginInlineStart: table ? 0 : "auto", minWidth: 180 }}>
             <Input
               icon={Search}
               autoFocus
-              placeholder="اسم المنتج أو الباركود"
+              placeholder={t("pos.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
