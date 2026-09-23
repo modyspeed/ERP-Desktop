@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   Armchair,
   Banknote,
+  Coins,
+  CreditCard,
   Delete,
   Grid2X2,
   LogOut,
@@ -12,6 +14,8 @@ import {
   Search,
   ShoppingCart,
   Trash2,
+  User,
+  Wallet,
   X,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -336,6 +340,9 @@ const PosPage = () => {
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState([]);
   const [paidAmount, setPaidAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [customerId, setCustomerId] = useState("");
+  const [cardPaid, setCardPaid] = useState("");
   const [saving, setSaving] = useState(false);
   const [table, setTable] = useState(null);
   const [posSession, setPosSession] = useState(null);
@@ -422,8 +429,22 @@ const PosPage = () => {
         .reduce((sum, rule) => sum + (rule.calculation_method === "withholding" ? -1 : 1) * getTaxValue(rule), 0)
     : 0;
   const total = subtotal + tax;
-  const paid = paidAmount === "" ? total : Number(paidAmount || 0);
+  const cashEntered = paidAmount === "" ? 0 : Number(paidAmount || 0);
+  const cardEntered = cardPaid === "" ? 0 : Number(cardPaid || 0);
+
+  // المبلغ المحصّل يعتمد على طريقة الدفع المختارة
+  const paid =
+    paymentMethod === "cash"
+      ? paidAmount === ""
+        ? total
+        : cashEntered
+      : paymentMethod === "card"
+        ? total
+        : paymentMethod === "mixed"
+          ? cashEntered + cardEntered
+          : 0; // credit: لا يحصّل الآن، يسجل على حساب العميل
   const change = Math.max(0, paid - total);
+  const remainingDue = Math.max(0, total - paid);
 
   const addProduct = (product) => {
     setCart((current) => {
@@ -456,16 +477,23 @@ const PosPage = () => {
 
   const completeSale = async () => {
     if (!cart.length) return toast.error("أضف صنفاً إلى السلة أولاً");
-    if (paid < total) return toast.error("المبلغ المدفوع أقل من الإجمالي");
+    if (paymentMethod === "credit" && !customerId) return toast.error(t("pos.creditCustomerRequired"));
+    if (paymentMethod === "cash" && paid < total) return toast.error("المبلغ المدفوع أقل من الإجمالي");
+    if (paymentMethod === "mixed" && cashEntered + cardEntered < total) return toast.error(t("pos.mixedShort"));
+
     setSaving(true);
     const response = await window.api.sales.createInvoice({
       branch_id: currentBranch?.id || 1,
       warehouse_id: Number(warehouseId),
       items: cart,
-      paid_amount: total,
+      customer_id: customerId || null,
+      paid_amount: paid,
+      payment_method: paymentMethod,
+      cash_amount: paymentMethod === "mixed" ? cashEntered : undefined,
+      card_amount: paymentMethod === "mixed" ? cardEntered : undefined,
       tax_rule_ids: selectedTaxRuleIds,
       tax_overrides: selectedTaxRuleIds.map((id) => ({ id, rate: taxValues[id]?.rate, value: taxValues[id]?.value === '' ? undefined : taxValues[id]?.value })),
-      invoice_type: "cash",
+      invoice_type: paymentMethod === "credit" ? "credit" : "cash",
       source: "pos",
       table_id: table?.id || null,
       pos_session_id: posSession?.id || null,
@@ -474,7 +502,7 @@ const PosPage = () => {
     if (response?.success) {
       toast.success(`تمت عملية البيع ${response.data.invoice_number}`);
       if (table) toast.info(`${t('pos.tableFreed')}: ${t('tables.tableNumber')} ${table.number}`);
-      await window.api.hardware.openCashDrawer();
+      if (paymentMethod === "cash" || paymentMethod === "mixed") await window.api.hardware.openCashDrawer();
       await window.api.hardware.printReceipt({
         invoice: response.data,
         settings,
@@ -482,6 +510,7 @@ const PosPage = () => {
       });
       setCart([]);
       setPaidAmount("");
+      setCardPaid("");
       setSearch("");
       setTable(null);
       loadPosSession();
@@ -764,33 +793,176 @@ const PosPage = () => {
               {total.toFixed(2)}
             </strong>
           </div>
-          <Input
-            label="المبلغ المدفوع"
-            type="number"
-            min={total}
-            step="0.01"
-            value={paidAmount}
-            placeholder={total.toFixed(2)}
-            onChange={(e) => setPaidAmount(e.target.value)}
-          />
-          <div
+
+          {/* طرق الدفع */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+            {[
+              { id: "cash", label: t("pos.methodCash"), icon: Banknote },
+              { id: "card", label: t("pos.methodCard"), icon: CreditCard },
+              { id: "credit", label: t("pos.methodCredit"), icon: Wallet },
+              { id: "mixed", label: t("pos.methodMixed"), icon: Coins },
+            ].map((option) => {
+              const Icon = option.icon;
+              const active = paymentMethod === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => {
+                    setPaymentMethod(option.id);
+                    setPaidAmount("");
+                    setCardPaid("");
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 7,
+                    padding: "10px 8px",
+                    borderRadius: 10,
+                    border: `1px solid ${active ? "var(--primary-color)" : "var(--border-color)"}`,
+                    backgroundColor: active ? "var(--primary-light)" : "var(--bg-surface)",
+                    color: active ? "var(--primary-color)" : "var(--text-secondary)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  <Icon size={16} />
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* العميل (إلزامي للدفع الآجل) */}
+          <label
             style={{
               display: "flex",
-              justifyContent: "space-between",
-              color: "#10b981",
+              flexDirection: "column",
+              gap: 6,
               fontSize: 13,
+              fontWeight: 600,
+              color: "var(--text-secondary)",
             }}
           >
-            <span>الباقي</span>
-            <strong>{change.toFixed(2)}</strong>
-          </div>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <User size={14} />
+              {t("pos.customer")}
+              {paymentMethod === "credit" && <span style={{ color: "#ef4444" }}>*</span>}
+            </span>
+            <select
+              value={customerId}
+              onChange={(e) => setCustomerId(e.target.value)}
+              style={{
+                padding: "10px 14px",
+                border: `1px solid ${paymentMethod === "credit" && !customerId ? "#ef4444" : "var(--border-color)"}`,
+                borderRadius: 10,
+                background: "var(--bg-surface)",
+                color: "var(--text-main)",
+              }}
+            >
+              <option value="">{t("pos.walkInCustomer")}</option>
+              {options.customers?.map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* مدخلات المبلغ حسب طريقة الدفع */}
+          {paymentMethod === "cash" && (
+            <Input
+              label={t("pos.cashReceived")}
+              type="number"
+              min={total}
+              step="0.01"
+              value={paidAmount}
+              placeholder={total.toFixed(2)}
+              onChange={(e) => setPaidAmount(e.target.value)}
+            />
+          )}
+          {paymentMethod === "card" && (
+            <div
+              style={{
+                border: "1px dashed var(--border-color)",
+                borderRadius: 10,
+                padding: "10px 12px",
+                fontSize: 12,
+                color: "var(--text-muted)",
+              }}
+            >
+              {t("pos.cardHint")}
+            </div>
+          )}
+          {paymentMethod === "credit" && (
+            <div
+              style={{
+                border: "1px dashed var(--border-color)",
+                borderRadius: 10,
+                padding: "10px 12px",
+                fontSize: 12,
+                color: "var(--text-muted)",
+              }}
+            >
+              {t("pos.creditHint")}
+            </div>
+          )}
+          {paymentMethod === "mixed" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <Input
+                label={t("pos.cashAmount")}
+                type="number"
+                min="0"
+                step="0.01"
+                value={paidAmount}
+                onChange={(e) => setPaidAmount(e.target.value)}
+              />
+              <Input
+                label={t("pos.cardAmount")}
+                type="number"
+                min="0"
+                step="0.01"
+                value={cardPaid}
+                placeholder={Math.max(0, total - cashEntered).toFixed(2)}
+                onChange={(e) => setCardPaid(e.target.value)}
+              />
+            </div>
+          )}
+
+          {paymentMethod === "credit" ? (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                color: "#d97706",
+                fontSize: 13,
+              }}
+            >
+              <span>{t("pos.onAccount")}</span>
+              <strong>{remainingDue.toFixed(2)}</strong>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                color: "#10b981",
+                fontSize: 13,
+              }}
+            >
+              <span>الباقي</span>
+              <strong>{change.toFixed(2)}</strong>
+            </div>
+          )}
           <Button
             size="lg"
-            icon={Banknote}
+            icon={paymentMethod === "credit" ? Wallet : Banknote}
             loading={saving}
             onClick={completeSale}
           >
-            إتمام البيع
+            {paymentMethod === "credit" ? t("pos.completeCredit") : t("pos.completeSale")}
           </Button>
           <Button
             variant="secondary"

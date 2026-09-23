@@ -21,6 +21,7 @@ import WarehousesPage from '../modules/inventory/pages/WarehousesPage';
 import StockTransferPage from '../modules/inventory/pages/StockTransferPage';
 import CustomersPage from '../modules/sales/pages/CustomersPage';
 import SalesPage from '../modules/sales/pages/SalesPage';
+import CollectionPage from '../modules/sales/pages/CollectionPage';
 import PosPage from '../modules/pos/pages/PosPage';
 import PosSessionPage from '../modules/pos/pages/PosSessionPage';
 import TablesPage from '../modules/pos/pages/TablesPage';
@@ -180,6 +181,7 @@ export const AppRoutes = () => {
 
         {/* Future Phase Placeholders */}
         <Route path="/sales" element={<SalesPage />} />
+        <Route path="/collections" element={<CollectionPage />} />
         <Route path="/customers" element={<CustomersPage />} />
         <Route path="/pos/session" element={<PosSessionPage />} />
         <Route path="/pos/tables" element={<TablesPage />} />

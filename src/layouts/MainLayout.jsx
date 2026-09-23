@@ -29,6 +29,7 @@ import {
   ChevronDown,
   ShieldCheck,
   Armchair,
+  HandCoins,
 } from 'lucide-react';
 
 const MainLayout = () => {
@@ -55,6 +56,7 @@ const MainLayout = () => {
   const navItems = [
     { key: 'dashboard', to: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard'), module: 'dashboard' },
     { key: 'sales', to: '/sales', icon: ShoppingCart, label: t('nav.sales'), module: 'sales' },
+    { key: 'collections', to: '/collections', icon: HandCoins, label: t('nav.collections'), module: 'sales' },
     { key: 'pos', to: '/pos', icon: Receipt, label: t('nav.pos'), module: 'pos', exact: true },
     ...(settings?.business_type === 'restaurants_cafes'
       ? [{ key: 'tables', to: '/pos/tables', icon: Armchair, label: t('nav.tables'), module: 'pos' }]

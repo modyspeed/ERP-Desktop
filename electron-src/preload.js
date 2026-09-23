@@ -112,6 +112,8 @@ contextBridge.exposeInMainWorld('api', {
     invoices: (params) => invokeWithUser('sales:invoices', params),
     options: (branchId) => invokeWithUser('sales:options', branchId),
     createInvoice: (data) => invokeWithUser('sales:create-invoice', data),
+    unpaidInvoices: (params) => invokeWithUser('sales:unpaid-invoices', params),
+    collectPayment: (data) => invokeWithUser('sales:collect-payment', data),
   },
 
   suppliers: {

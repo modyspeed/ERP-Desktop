@@ -50,25 +50,32 @@ class PosRepository {
     return this.getSessionById(id);
   }
 
-  recordTransaction({ session_id, invoice_id, payment_method = 'cash', amount_paid = 0, change_due = 0 }) {
+  recordTransaction({ session_id, invoice_id, payment_method = 'cash', amount_paid = 0, change_due = 0, cash_amount, card_amount }) {
     if (!session_id || !invoice_id) throw new Error('الوردية والفاتورة مطلوبتان لتسجيل المعاملة');
+
+    const method = ['cash', 'card', 'mixed', 'credit'].includes(payment_method) ? payment_method : 'cash';
+    const paid = Number(amount_paid) || 0;
+    // الصندوق لا يستقبل إلا النقد الفعلي؛ البطاقة والآجل لا يدخلان فيه.
+    const cashAmount = Number(cash_amount ?? (method === 'cash' ? paid : 0)) || 0;
+    const cardAmount = Number(card_amount ?? (method === 'card' ? paid : 0)) || 0;
 
     const db = getDatabase();
     const info = db
       .prepare(
-        `INSERT INTO pos_transactions (session_id, invoice_id, payment_method, amount_paid, change_due, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO pos_transactions (session_id, invoice_id, payment_method, amount_paid, change_due, cash_amount, card_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(session_id, invoice_id, payment_method, Number(amount_paid) || 0, Number(change_due) || 0, new Date().toISOString());
+      .run(session_id, invoice_id, method, paid, Number(change_due) || 0, cashAmount, cardAmount, new Date().toISOString());
 
     return db.prepare('SELECT * FROM pos_transactions WHERE id = ?').get(info.lastInsertRowid);
   }
 
-  // إجمالي المبيعات الكاش لوردية معينة (المبلغ المدفوع الفعلي بعد الباقي)
+  // إجمالي النقد الفعلي الداخل للصندوق في وردية معينة (النقد ناقص الباقي المردود).
+  // البطاقات والمبيعات الآجلة لا تدخل في هذا الحساب لأنها لم تدخل الصندوق فعلياً.
   getCashSalesTotal(sessionId) {
     if (!sessionId) return 0;
     const row = this.db
       .prepare(
-        `SELECT COALESCE(SUM(amount_paid - change_due), 0) AS total FROM pos_transactions WHERE session_id = ? AND payment_method = 'cash'`
+        `SELECT COALESCE(SUM(COALESCE(cash_amount, CASE WHEN payment_method = 'cash' THEN amount_paid ELSE 0 END) - change_due), 0) AS total FROM pos_transactions WHERE session_id = ?`
       )
       .get(sessionId);
     return Number(row?.total || 0);

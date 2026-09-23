@@ -92,6 +92,18 @@ function initDatabase() {
     }
     const purchaseInvoiceColumns = dbInstance.prepare('PRAGMA table_info(purchase_invoices)').all().map((column) => column.name);
     if (!purchaseInvoiceColumns.includes('tax_details')) dbInstance.exec('ALTER TABLE purchase_invoices ADD COLUMN tax_details TEXT');
+
+    // POS multi-tender support: track the cash/card split of each shift transaction
+    // so drawer reconciliation (expected_balance) only counts money that actually
+    // entered the cash drawer. Credit sales record zero in both columns.
+    const posTransactionColumns = dbInstance.prepare('PRAGMA table_info(pos_transactions)').all().map((column) => column.name);
+    if (!posTransactionColumns.includes('cash_amount')) {
+      dbInstance.exec('ALTER TABLE pos_transactions ADD COLUMN cash_amount REAL DEFAULT 0');
+    }
+    if (!posTransactionColumns.includes('card_amount')) {
+      dbInstance.exec('ALTER TABLE pos_transactions ADD COLUMN card_amount REAL DEFAULT 0');
+    }
+    dbInstance.exec("UPDATE pos_transactions SET cash_amount = MAX(0, amount_paid - change_due) WHERE payment_method = 'cash' AND COALESCE(cash_amount, 0) = 0 AND amount_paid > 0");
     
     // Phase 2: Extend tax_rules with tax_type, effective_from, effective_to, is_default
     const taxRulesColumns = dbInstance.prepare('PRAGMA table_info(tax_rules)').all().map((column) => column.name);
