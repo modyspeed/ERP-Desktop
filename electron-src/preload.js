@@ -240,4 +240,9 @@ contextBridge.exposeInMainWorld('api', {
     closeSession: (data) => invokeWithUser('pos:close-session', data),
     sessionStats: (params) => invokeWithUser('pos:session-stats', params),
   },
+
+  importData: {
+    selectFile: (params) => invokeWithUser('import:select-file', params),
+    apply: (data) => invokeWithUser('import:apply', data),
+  },
 });

@@ -20,6 +20,7 @@ const registerReturnIPC = require('./return.ipc');
 const registerReportIPC = require('./report.ipc');
 const registerTaxesIPC = require('./taxes.ipc');
 const registerPosIPC = require('./pos.ipc');
+const registerImportIPC = require('./import.ipc');
 const printerAdapter = require('../hardware/printer.adapter');
 const cashDrawerAdapter = require('../hardware/cashdrawer.adapter');
 
@@ -46,6 +47,7 @@ function registerAllIPC(ipcMain) {
   registerBackupIPC(ipcMain);
   registerReportIPC(ipcMain);
   registerPosIPC(ipcMain);
+  registerImportIPC(ipcMain);
 
   // Hardware IPC
   ipcMain.handle('hardware:print-receipt', async (event, params) => {

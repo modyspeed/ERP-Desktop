@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Edit2, Mail, Phone, Plus, Search, Trash2, UserRound } from 'lucide-react';
+import { Edit2, Mail, Phone, Plus, Search, Trash2, Upload, UserRound } from 'lucide-react';
 import { useSettings } from '../../../context/SettingsContext';
 import { useToast } from '../../../context/ToastContext';
 import Button from '../../../components/ui/Button';
@@ -9,6 +9,7 @@ import Input from '../../../components/ui/Input';
 import Modal from '../../../components/ui/Modal';
 import Pagination from '../../../components/ui/Pagination';
 import Table from '../../../components/ui/Table';
+import ImportModal from '../../../components/import/ImportModal';
 
 const emptyForm = { name: '', phone: '', email: '', address: '', tax_number: '', category: '', credit_limit: 0, opening_balance: 0 };
 
@@ -22,6 +23,7 @@ const CustomersPage = () => {
   const [form, setForm] = useState(emptyForm);
   const [deleteId, setDeleteId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const loadCustomers = useCallback(async (page = 1) => {
     setLoading(true);
@@ -62,10 +64,11 @@ const CustomersPage = () => {
   ];
 
   return <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}><div><h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-main)' }}>العملاء</h1><p style={{ color: 'var(--text-muted)', marginTop: 4 }}>إدارة بيانات العملاء والأرصدة والحدود الائتمانية</p></div><Button icon={Plus} onClick={openCreate}>إضافة عميل</Button></div>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}><div><h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-main)' }}>العملاء</h1><p style={{ color: 'var(--text-muted)', marginTop: 4 }}>إدارة بيانات العملاء والأرصدة والحدود الائتمانية</p></div><div style={{ display: 'flex', gap: 8 }}><Button variant="secondary" icon={Upload} onClick={() => setImportOpen(true)}>استيراد</Button><Button icon={Plus} onClick={openCreate}>إضافة عميل</Button></div></div>
     <Card><div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}><Input icon={Search} placeholder="ابحث بالاسم أو الهاتف أو البريد" value={query} onChange={(event) => setQuery(event.target.value)} /><div style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: 13 }}>{result.total || 0} عميل</div></div><Table columns={columns} data={result.items} loading={loading} emptyMessage="لا توجد بيانات عملاء" /><Pagination currentPage={result.page} totalPages={result.totalPages} totalItems={result.total} pageSize={10} onPageChange={loadCustomers} /></Card>
     <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={form.id ? 'تعديل بيانات العميل' : 'إضافة عميل جديد'} maxWidth="700px"><form onSubmit={saveCustomer} style={{ display: 'grid', gap: 14 }}><div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}><Input label="اسم العميل" required value={form.name} onChange={(e) => update('name', e.target.value)} /><Input label="الهاتف" icon={Phone} value={form.phone || ''} onChange={(e) => update('phone', e.target.value)} /><Input label="البريد الإلكتروني" type="email" icon={Mail} value={form.email || ''} onChange={(e) => update('email', e.target.value)} /><Input label="التصنيف" value={form.category || ''} onChange={(e) => update('category', e.target.value)} /><Input label="الرقم الضريبي" value={form.tax_number || ''} onChange={(e) => update('tax_number', e.target.value)} /><Input label="العنوان" value={form.address || ''} onChange={(e) => update('address', e.target.value)} /><Input label="الحد الائتماني" type="number" min="0" step="0.01" value={form.credit_limit} onChange={(e) => update('credit_limit', e.target.value)} /><Input label="الرصيد الافتتاحي" type="number" step="0.01" value={form.opening_balance} onChange={(e) => update('opening_balance', e.target.value)} /></div><div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}><Button variant="secondary" onClick={() => setModalOpen(false)}>إلغاء</Button><Button type="submit" icon={UserRound} loading={saving}>حفظ العميل</Button></div></form></Modal>
     <ConfirmDialog isOpen={Boolean(deleteId)} onClose={() => setDeleteId(null)} onConfirm={deleteCustomer} title="حذف العميل" message="هل أنت متأكد من حذف هذا العميل؟" />
+    <ImportModal open={importOpen} type="customers" branchId={currentBranch?.id || 1} onClose={() => setImportOpen(false)} onImported={() => loadCustomers(result.page)} />
   </div>;
 };
 

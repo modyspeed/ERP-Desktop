@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Edit2, FolderTree, Package, Plus, Search, Trash2 } from 'lucide-react';
+import { Edit2, FolderTree, Package, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../../../context/SettingsContext';
 import { useToast } from '../../../context/ToastContext';
@@ -9,6 +9,7 @@ import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import Input from '../../../components/ui/Input';
 import Modal from '../../../components/ui/Modal';
 import Table from '../../../components/ui/Table';
+import ImportModal from '../../../components/import/ImportModal';
 
 const emptyForm = {
   name: '', sku: '', barcode: '', category_id: '', cost_price: 0, sale_price: 0, min_stock_alert: 5,
@@ -26,6 +27,7 @@ const ProductsPage = () => {
   const [form, setForm] = useState(emptyForm);
   const [deleteId, setDeleteId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
@@ -80,7 +82,7 @@ const ProductsPage = () => {
   return <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
       <div><h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-main)' }}>المنتجات والمخزون</h1><p style={{ color: 'var(--text-muted)', marginTop: 4 }}>إدارة الأصناف والأسعار والكميات المتاحة</p></div>
-      <div style={{ display: 'flex', gap: 8 }}><Button variant="secondary" icon={FolderTree} onClick={() => navigate('/categories')}>التصنيفات</Button><Button icon={Plus} onClick={openCreate}>إضافة منتج</Button></div>
+      <div style={{ display: 'flex', gap: 8 }}><Button variant="secondary" icon={Upload} onClick={() => setImportOpen(true)}>استيراد</Button><Button variant="secondary" icon={FolderTree} onClick={() => navigate('/categories')}>التصنيفات</Button><Button icon={Plus} onClick={openCreate}>إضافة منتج</Button></div>
     </div>
     <Card>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}><Input icon={Search} placeholder="ابحث بالاسم أو الكود أو الباركود" value={query} onChange={(event) => setQuery(event.target.value)} /><div style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: 13 }}>{result.total || 0} منتج</div></div>
@@ -101,6 +103,7 @@ const ProductsPage = () => {
       </form>
     </Modal>
     <ConfirmDialog isOpen={Boolean(deleteId)} onClose={() => setDeleteId(null)} onConfirm={deleteProduct} title="حذف المنتج" message="هل أنت متأكد من حذف هذا المنتج؟" />
+    <ImportModal open={importOpen} type="products" branchId={currentBranch?.id || 1} onClose={() => setImportOpen(false)} onImported={loadProducts} />
   </div>;
 };
 
