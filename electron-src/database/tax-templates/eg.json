@@ -52,32 +52,6 @@
       "calculation_method": "additive",
       "is_enabled": 1,
       "notes": "استشارات"
-    },
-    {
-      "transaction_type": "service",
-      "name": "ضريبة الخصم والتحصيل - الخدمات",
-      "short_name": "WHT",
-      "rate": 3,
-      "tax_type": "withholding_tax",
-      "effective_from": "2016-09-08",
-      "effective_to": null,
-      "is_default": 0,
-      "calculation_method": "withholding",
-      "is_enabled": 0,
-      "notes": "تفعيلها يعتمد على نوع المورد والإقامة والعقد واللوائح المحلية"
-    },
-    {
-      "transaction_type": "consulting",
-      "name": "ضريبة الخصم والتحصيل - الاستشارات",
-      "short_name": "WHT",
-      "rate": 3,
-      "tax_type": "withholding_tax",
-      "effective_from": "2016-09-08",
-      "effective_to": null,
-      "is_default": 0,
-      "calculation_method": "withholding",
-      "is_enabled": 0,
-      "notes": "تفعيلها يعتمد على نوع المورد والإقامة والعقد واللوائح المحلية"
     }
   ],
   "tax_rates": [
@@ -121,11 +95,11 @@
       "is_active": true
     },
     {
-      "tax_code": "WHT_CONSULT",
-      "name_ar": "ضريبة الخصم والتحصيل - الاستشارات",
-      "name_en": "Withholding Tax - Consulting",
+      "tax_code": "WHT_SUPPLIES",
+      "name_ar": "ضريبة الخصم والإضافة - توريدات وسلع",
+      "name_en": "Withholding Tax - Supplies & Goods",
       "tax_type": "withholding",
-      "rate_percentage": 3,
+      "rate_percentage": 1,
       "applies_to": "purchases",
       "is_default": false,
       "is_withholding": true,
@@ -134,11 +108,50 @@
       "is_active": true
     },
     {
-      "tax_code": "WHT_SERVICES",
-      "name_ar": "ضريبة الخصم والتحصيل - الخدمات",
-      "name_en": "Withholding Tax - Services",
+      "tax_code": "WHT_CONTRACTING",
+      "name_ar": "ضريبة الخصم والإضافة - مقاولات",
+      "name_en": "Withholding Tax - Contracting",
       "tax_type": "withholding",
-      "rate_percentage": 3,
+      "rate_percentage": 1,
+      "applies_to": "purchases",
+      "is_default": false,
+      "is_withholding": true,
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_active": true
+    },
+    {
+      "tax_code": "WHT_GENERAL_SERVICES",
+      "name_ar": "ضريبة الخصم والإضافة - خدمات عامة",
+      "name_en": "Withholding Tax - General Services",
+      "tax_type": "withholding",
+      "rate_percentage": 2,
+      "applies_to": "purchases",
+      "is_default": false,
+      "is_withholding": true,
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_active": true
+    },
+    {
+      "tax_code": "WHT_PROFESSIONAL_FEES",
+      "name_ar": "ضريبة الخصم والإضافة - مهن حرة وأتعاب مهنية واستشارات",
+      "name_en": "Withholding Tax - Professional Fees & Consultations",
+      "tax_type": "withholding",
+      "rate_percentage": 5,
+      "applies_to": "purchases",
+      "is_default": false,
+      "is_withholding": true,
+      "effective_from": "2016-09-08",
+      "effective_to": null,
+      "is_active": true
+    },
+    {
+      "tax_code": "WHT_BROKERAGE",
+      "name_ar": "ضريبة الخصم والإضافة - سمسرة وعمولات وإعلانات",
+      "name_en": "Withholding Tax - Brokerage, Commissions & Advertising",
+      "tax_type": "withholding",
+      "rate_percentage": 5,
       "applies_to": "purchases",
       "is_default": false,
       "is_withholding": true,

@@ -53,4 +53,23 @@ function createJournalEntry(db, { branch_id = 1, description, reference_type, re
   return { id: entry.lastInsertRowid, entry_number: entryNumber, total_debit: totalDebit, total_credit: totalCredit };
 }
 
-module.exports = { resolveAccount, createJournalEntry };
+/**
+ * Resolve an account by code/name pattern, creating it when it does not exist
+ * yet (e.g. the "Withholding Tax Payable" liability account). Returns the
+ * account id, or null when creation is not possible.
+ */
+function ensureAccount(db, code, name, accountType, parentCode) {
+  const existing = resolveAccount(db, code, accountType, name);
+  if (existing) return existing;
+
+  let parentId = null;
+  if (parentCode) {
+    const parent = db.prepare('SELECT id FROM chart_of_accounts WHERE code = ? AND is_deleted = 0').get(parentCode);
+    parentId = parent ? parent.id : null;
+  }
+  db.prepare('INSERT OR IGNORE INTO chart_of_accounts (code, name, account_type, parent_id) VALUES (?, ?, ?, ?)').run(code, name, accountType, parentId);
+  const created = db.prepare('SELECT id FROM chart_of_accounts WHERE code = ? AND is_deleted = 0').get(code);
+  return created ? created.id : null;
+}
+
+module.exports = { resolveAccount, ensureAccount, createJournalEntry };

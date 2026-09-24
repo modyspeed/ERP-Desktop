@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FilePlus2, Plus, Printer, Search, Trash2, Truck } from "lucide-react";
+import { FilePlus2, HandCoins, Plus, Printer, Search, Trash2, Truck } from "lucide-react";
 import { useAuth } from "../../../context/AuthContext";
 import { useSettings } from "../../../context/SettingsContext";
 import { useToast } from "../../../context/ToastContext";
@@ -338,6 +338,10 @@ const PurchaseInvoicesPage = () => {
   const [paidAmount, setPaidAmount] = useState(0);
   const [cart, setCart] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [paying, setPaying] = useState(null);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("cash");
+  const [paySaving, setPaySaving] = useState(false);
 
   const loadInvoices = useCallback(
     async (page = 1) => {
@@ -393,6 +397,67 @@ const PurchaseInvoicesPage = () => {
         .reduce((sum, rule) => sum + (rule.calculation_method === "withholding" ? -1 : 1) * getTaxValue(rule), 0)
     : 0;
   const total = subtotal + tax;
+
+  // ضريبة الخصم والإضافة تُحدد تلقائياً من تصنيف المورد (تُخصم عند السداد)،
+  // وتُلغى تماماً لو كان مسجلاً في نظام الدفعات المقدمة.
+  const selectedSupplier = options.suppliers.find(
+    (supplier) => String(supplier.id) === String(supplierId),
+  );
+  const supplierWhtRate =
+    selectedSupplier && Number(selectedSupplier.is_advance_payment_exempt) !== 1
+      ? Number(
+          options.withholdingCategories.find(
+            (cat) => cat.tax_code === selectedSupplier.withholding_category,
+          )?.rate_percentage ?? 0,
+        )
+      : 0;
+  const whtPreview = supplierWhtRate > 0 ? total * (supplierWhtRate / 100) : 0;
+  const netPayable = total - whtPreview;
+
+  // معاينة الخصم على فاتورة قيد التحصيل (نفس منطق الخادم):
+  // المورد المعفى لا يُخصم إطلاقاً، وإلا فنسبة تصنيفه.
+  const payPreview = useMemo(() => {
+    if (!paying) return { rate: 0, wht: 0, net: 0, remaining: 0 };
+    const remaining = Number(paying.remaining_amount || 0);
+    const code = paying.withholding_tax_code || paying.withholding_category;
+    const category = options.withholdingCategories.find((cat) => cat.tax_code === code);
+    const rate =
+      Number(paying.is_advance_payment_exempt) === 1
+        ? 0
+        : Number(category?.rate_percentage ?? 0);
+    const wht = remaining * (rate / 100);
+    return { rate, wht, net: remaining - wht, remaining };
+  }, [paying, options.withholdingCategories]);
+
+  const openPay = (invoice) => {
+    setPaying(invoice);
+    setPayAmount("");
+    setPayMethod("cash");
+  };
+  const submitPay = async (event) => {
+    event.preventDefault();
+    if (!paying) return;
+    const amount = payAmount === "" ? payPreview.net : Number(payAmount);
+    if (!Number.isFinite(amount) || amount <= 0)
+      return toast.error("مبلغ السداد يجب أن يكون أكبر من صفر");
+    if (amount > payPreview.net + 0.01)
+      return toast.error(
+        `لا يمكن سداد أكثر من الصافي المستحق بعد الضريبة (${payPreview.net.toFixed(2)})`,
+      );
+    setPaySaving(true);
+    const response = await window.api?.purchases?.collectPayment({
+      invoice_id: paying.id,
+      amount,
+      payment_method: payMethod,
+      created_by: user?.id,
+    });
+    if (response?.success) {
+      toast.success(response.message);
+      setPaying(null);
+      loadInvoices(invoices.page);
+    } else toast.error(response?.error || "تعذر تسديد الفاتورة");
+    setPaySaving(false);
+  };
   const addToCart = () => {
     if (!selectedProduct || Number(quantity) <= 0) return;
     const cost = Number(
@@ -497,17 +562,39 @@ const PurchaseInvoicesPage = () => {
       render: (value) => Number(value || 0).toFixed(2),
     },
     {
-      key: "print",
+      key: "remaining_amount",
+      header: "المتبقي",
+      align: "end",
+      render: (value) => (
+        <strong style={{ color: Number(value) > 0 ? "#d97706" : "#10b981" }}>
+          {Number(value || 0).toFixed(2)}
+        </strong>
+      ),
+    },
+    {
+      key: "actions",
       header: "",
       align: "end",
       render: (_, row) => (
-        <Button
-          size="sm"
-          variant="ghost"
-          icon={Printer}
-          onClick={() => printInvoice(row)}
-          title="طباعة الفاتورة"
-        />
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+          {Number(row.remaining_amount) > 0 && (
+            <Button
+              size="sm"
+              icon={HandCoins}
+              onClick={() => openPay(row)}
+              title="سداد الفاتورة"
+            >
+              سداد
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={Printer}
+            onClick={() => printInvoice(row)}
+            title="طباعة الفاتورة"
+          />
+        </div>
       ),
     },
   ];
@@ -804,6 +891,64 @@ const PurchaseInvoicesPage = () => {
               </strong>
             </div>
           </div>
+          {selectedSupplier &&
+            (supplierWhtRate > 0 ||
+              Number(selectedSupplier.is_advance_payment_exempt) === 1) && (
+              <div
+                style={{
+                  border: "1px solid var(--border-color)",
+                  borderRadius: 12,
+                  padding: 12,
+                  display: "grid",
+                  gap: 8,
+                  color: "var(--text-main)",
+                  background:
+                    Number(selectedSupplier.is_advance_payment_exempt) === 1
+                      ? "#f5f3ff"
+                      : undefined,
+                }}
+              >
+                {Number(selectedSupplier.is_advance_payment_exempt) === 1 ? (
+                  <span style={{ fontSize: 13, color: "#7c3aed", fontWeight: 700 }}>
+                    هذا المورد مسجّل في نظام الدفعات المقدمة — لن تُخصم ضريبة الخصم
+                    والإضافة من فواتيره إطلاقاً
+                  </span>
+                ) : (
+                  <>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: 13,
+                      }}
+                    >
+                      <span>
+                        ضريبة الخصم والإضافة ({supplierWhtRate}%) — تُخصم عند السداد
+                      </span>
+                      <strong style={{ color: "#ef4444" }}>
+                        -{whtPreview.toFixed(2)}
+                      </strong>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, fontSize: 14 }}>
+                        الصافي المستحق للمورد
+                      </span>
+                      <strong
+                        style={{ color: "var(--primary-color)", fontSize: 20 }}
+                      >
+                        {netPayable.toFixed(2)}
+                      </strong>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>
               إلغاء
@@ -811,6 +956,164 @@ const PurchaseInvoicesPage = () => {
             <Button type="submit" icon={Truck} loading={saving}>
               حفظ فاتورة الشراء
             </Button>
+          </div>
+        </form>
+      </Modal>
+      <Modal
+        isOpen={Boolean(paying)}
+        onClose={() => setPaying(null)}
+        title="سداد فاتورة شراء"
+        subtitle={
+          paying
+            ? `${paying.invoice_number} — ${paying.supplier_name}`
+            : ""
+        }
+        maxWidth="520px"
+      >
+        <form onSubmit={submitPay} style={{ display: "grid", gap: 16 }}>
+          {paying && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  payPreview.rate > 0
+                    ? "repeat(3, minmax(0, 1fr))"
+                    : "1fr",
+                gap: 10,
+                border: "1px solid var(--border-color)",
+                borderRadius: 12,
+                padding: 12,
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: 11,
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  المبلغ الإجمالي
+                </span>
+                <strong style={{ color: "var(--text-main)" }}>
+                  {payPreview.remaining.toFixed(2)}
+                </strong>
+              </div>
+              {payPreview.rate > 0 && (
+                <div>
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: 11,
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    ضريبة الخصم والإضافة ({payPreview.rate}%)
+                  </span>
+                  <strong style={{ color: "#ef4444" }}>
+                    -{payPreview.wht.toFixed(2)}
+                  </strong>
+                </div>
+              )}
+              <div>
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: 11,
+                    color: "var(--text-muted)",
+                  }}
+                >
+                  الصافي المستحق للمورد
+                </span>
+                <strong style={{ color: "var(--primary-color)" }}>
+                  {payPreview.net.toFixed(2)}
+                </strong>
+              </div>
+            </div>
+          )}
+          {paying && Number(paying.is_advance_payment_exempt) === 1 && (
+            <span
+              style={{ fontSize: 12, fontWeight: 700, color: "#7c3aed" }}
+            >
+              المورد مسجّل في نظام الدفعات المقدمة — لا يُخصم منه ضريبة الخصم
+              والإضافة
+            </span>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {[
+              { id: "cash", label: "نقداً" },
+              { id: "card", label: "بطاقة / تحويل" },
+            ].map((option) => {
+              const active = payMethod === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setPayMethod(option.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 7,
+                    padding: "10px 8px",
+                    borderRadius: 10,
+                    border: `1px solid ${active ? "var(--primary-color)" : "var(--border-color)"}`,
+                    backgroundColor: active
+                      ? "var(--primary-light)"
+                      : "var(--bg-surface)",
+                    color: active
+                      ? "var(--primary-color)"
+                      : "var(--text-secondary)",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <Input
+            label="مبلغ السداد (الصافي بعد الضريبة)"
+            type="number"
+            min="0.01"
+            step="0.01"
+            max={payPreview.net}
+            required
+            autoFocus
+            value={payAmount}
+            placeholder={payPreview.net.toFixed(2)}
+            onChange={(event) => setPayAmount(event.target.value)}
+            helperText={`الصافي المستحق: ${payPreview.net.toFixed(2)}`}
+          />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setPayAmount(payPreview.net.toFixed(2))}
+            >
+              سداد الصافي كاملاً
+            </Button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setPaying(null)}
+              >
+                إلغاء
+              </Button>
+              <Button type="submit" icon={HandCoins} loading={paySaving}>
+                تأكيد السداد
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>

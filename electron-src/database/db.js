@@ -93,6 +93,46 @@ function initDatabase() {
     const purchaseInvoiceColumns = dbInstance.prepare('PRAGMA table_info(purchase_invoices)').all().map((column) => column.name);
     if (!purchaseInvoiceColumns.includes('tax_details')) dbInstance.exec('ALTER TABLE purchase_invoices ADD COLUMN tax_details TEXT');
 
+    // Egyptian WHT (Section 19): supplier-level withholding category + the
+    // alternative "Advance Payments System" exemption flag. The category is a
+    // tax_code from tax_rates that selects the rate applied automatically on
+    // purchase invoices instead of choosing it manually every time.
+    const supplierColumns = dbInstance.prepare('PRAGMA table_info(suppliers)').all().map((column) => column.name);
+    if (!supplierColumns.includes('withholding_category')) {
+      dbInstance.exec('ALTER TABLE suppliers ADD COLUMN withholding_category TEXT');
+    }
+    if (!supplierColumns.includes('is_advance_payment_exempt')) {
+      dbInstance.exec('ALTER TABLE suppliers ADD COLUMN is_advance_payment_exempt INTEGER DEFAULT 0');
+    }
+
+    // Withholding amounts are deducted at payment time and tracked per invoice:
+    // total = paid_amount + withholding_amount + remaining_amount.
+    if (!purchaseInvoiceColumns.includes('withholding_tax_code')) {
+      dbInstance.exec('ALTER TABLE purchase_invoices ADD COLUMN withholding_tax_code TEXT');
+    }
+    if (!purchaseInvoiceColumns.includes('withholding_rate')) {
+      dbInstance.exec('ALTER TABLE purchase_invoices ADD COLUMN withholding_rate REAL DEFAULT 0');
+    }
+    if (!purchaseInvoiceColumns.includes('withholding_amount')) {
+      dbInstance.exec('ALTER TABLE purchase_invoices ADD COLUMN withholding_amount REAL DEFAULT 0');
+    }
+
+    // The old Egyptian template shipped a single flat 3% WHT rate. It is
+    // replaced by the five category-based rates (see tax-templates/eg.json);
+    // drop the placeholder rows so old databases pick up the new set.
+    const staleWhRates = dbInstance
+      .prepare("SELECT id FROM tax_rates WHERE country_code = 'EG' AND tax_code IN ('WHT_CONSULT', 'WHT_SERVICES')")
+      .all();
+    if (staleWhRates.length) {
+      const staleIds = staleWhRates.map((row) => row.id);
+      const placeholders = staleIds.map(() => '?').join(', ');
+      dbInstance.exec('PRAGMA foreign_keys = OFF');
+      dbInstance.prepare(`DELETE FROM product_tax_class WHERE tax_rate_id IN (${placeholders})`).run(...staleIds);
+      dbInstance.prepare(`DELETE FROM tax_rates WHERE id IN (${placeholders})`).run(...staleIds);
+      dbInstance.prepare("DELETE FROM tax_rules WHERE country_code = 'EG' AND calculation_method = 'withholding' AND rate = 3").run();
+      dbInstance.exec('PRAGMA foreign_keys = ON');
+    }
+
     // POS multi-tender support: track the cash/card split of each shift transaction
     // so drawer reconciliation (expected_balance) only counts money that actually
     // entered the cash drawer. Credit sales record zero in both columns.

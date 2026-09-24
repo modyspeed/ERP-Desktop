@@ -4,6 +4,7 @@ class PurchaseService {
   listInvoices(params) { return purchaseRepository.listInvoices(params); }
   getFormOptions(branchId) { return purchaseRepository.getFormOptions(branchId); }
   createInvoice(data) { return purchaseRepository.createInvoice(data); }
+  collectPayment(data) { return purchaseRepository.collectPayment(data); }
 }
 
 module.exports = new PurchaseService();

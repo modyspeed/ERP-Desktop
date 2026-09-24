@@ -293,7 +293,7 @@ function runAccountingCatalogSeeds(db) {
 function runTaxRuleSeeds(db) {
   const fs = require('fs');
   const path = require('path');
-  const templatesDir = path.join(__dirname, '..', 'database', 'tax-templates');
+  const templatesDir = path.join(__dirname, '..', 'tax-templates');
   if (!fs.existsSync(templatesDir)) return;
 
   const files = fs.readdirSync(templatesDir).filter((f) => f.endsWith('.json'));
@@ -333,7 +333,7 @@ function runTaxRuleSeeds(db) {
 function runTaxTemplateSeeds(db) {
   const fs = require('fs');
   const path = require('path');
-  const templatesDir = path.join(__dirname, '..', 'database', 'tax-templates');
+  const templatesDir = path.join(__dirname, '..', 'tax-templates');
   if (!fs.existsSync(templatesDir)) return;
 
   const files = fs.readdirSync(templatesDir).filter((f) => f.endsWith('.json'));
