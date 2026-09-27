@@ -41,6 +41,36 @@ function registerReportIpc(ipcMain) {
     try { return { success: true, data: reportService.salesSummary(params || {}) }; }
     catch (err) { return { success: false, error: err.message }; }
   });
+
+  ipcMain.handle('reports:trial-balance', async (event, params) => {
+    const userId = params?._userId || null;
+    if (!userId) return { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' };
+    if (!permissionMiddleware.hasPermission(userId, 'reports', 'view')) {
+      return { success: false, error: 'Forbidden', code: 'FORBIDDEN' };
+    }
+    try { return { success: true, data: reportService.trialBalance(params || {}) }; }
+    catch (err) { return { success: false, error: err.message }; }
+  });
+
+  ipcMain.handle('reports:income-statement', async (event, params) => {
+    const userId = params?._userId || null;
+    if (!userId) return { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' };
+    if (!permissionMiddleware.hasPermission(userId, 'reports', 'view')) {
+      return { success: false, error: 'Forbidden', code: 'FORBIDDEN' };
+    }
+    try { return { success: true, data: reportService.incomeStatement(params || {}) }; }
+    catch (err) { return { success: false, error: err.message }; }
+  });
+
+  ipcMain.handle('reports:balance-sheet', async (event, params) => {
+    const userId = params?._userId || null;
+    if (!userId) return { success: false, error: 'Unauthorized', code: 'UNAUTHORIZED' };
+    if (!permissionMiddleware.hasPermission(userId, 'reports', 'view')) {
+      return { success: false, error: 'Forbidden', code: 'FORBIDDEN' };
+    }
+    try { return { success: true, data: reportService.balanceSheet(params || {}) }; }
+    catch (err) { return { success: false, error: err.message }; }
+  });
 }
 
 module.exports = registerReportIpc;

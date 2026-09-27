@@ -214,6 +214,9 @@ contextBridge.exposeInMainWorld('api', {
     inventoryMovement: (params) => invokeWithUser('reports:inventory-movement', params),
     taxReport: (params) => invokeWithUser('reports:tax-report', params),
     salesSummary: (params) => invokeWithUser('reports:sales-summary', params),
+    trialBalance: (params) => invokeWithUser('reports:trial-balance', params),
+    incomeStatement: (params) => invokeWithUser('reports:income-statement', params),
+    balanceSheet: (params) => invokeWithUser('reports:balance-sheet', params),
   },
 
   hr: {

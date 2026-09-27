@@ -111,6 +111,255 @@ class ReportRepository extends BaseRepository {
     if (end_date) { sql += ' AND date <= ?'; params.push(end_date); }
     return this.db.prepare(sql).get(...params);
   }
+
+  // ميزان المراجعة: مجموع حركة كل حساب (مدين/دائن) خلال فترة محددة.
+  // القيد المحاسبي الواحد متوازن بطبيعته، لذا يجب أن يتساوى إجمالي
+  // المدين مع إجمالي الدائن دائمًا؛ أي اختلاف يعني خطأ في البيانات.
+  trialBalance({ start_date, end_date, branch_id = 1 } = {}) {
+    let sql = `
+      SELECT
+        a.id,
+        a.code,
+        a.name,
+        a.account_type,
+        a.parent_id,
+        COALESCE(SUM(jel.debit), 0) AS total_debit,
+        COALESCE(SUM(jel.credit), 0) AS total_credit
+      FROM chart_of_accounts a
+      LEFT JOIN journal_entry_lines jel ON jel.account_id = a.id
+      LEFT JOIN journal_entries je ON je.id = jel.journal_entry_id AND je.is_deleted = 0
+      WHERE a.is_deleted = 0
+    `;
+    const params = [];
+    if (branch_id) { sql += ' AND COALESCE(je.branch_id, ?) = ?'; params.push(branch_id, branch_id); }
+    if (start_date) { sql += ' AND COALESCE(je.date, ?) >= ?'; params.push(start_date, start_date); }
+    if (end_date) { sql += ' AND COALESCE(je.date, ?) <= ?'; params.push(end_date, end_date); }
+    sql += ' GROUP BY a.id, a.code, a.name, a.account_type, a.parent_id ORDER BY a.code ASC';
+
+    const accounts = this.db.prepare(sql).all(...params);
+
+    // تجميع القيم على الحسابات الأب بحيث يعكس ميزان المراجعة أرصدة
+    // الحسابات الفرعية فقط (التي ليس لها أبناء) وتجميعها على الآباء.
+    const childCounts = this.db
+      .prepare('SELECT parent_id, COUNT(*) AS children FROM chart_of_accounts WHERE is_deleted = 0 AND parent_id IS NOT NULL GROUP BY parent_id')
+      .all();
+    const hasChildren = new Set(childCounts.map((row) => row.parent_id));
+
+    const byId = new Map(accounts.map((acc) => [acc.id, { ...acc }]));
+    const summaryByType = {};
+    const totals = { debit: 0, credit: 0 };
+
+    for (const acc of accounts) {
+      const isSummary = hasChildren.has(acc.id);
+      const balance = Number(acc.total_debit || 0) - Number(acc.total_credit || 0);
+      const row = {
+        ...acc,
+        is_summary: isSummary,
+        balance,
+        total_debit: Number(acc.total_debit || 0),
+        total_credit: Number(acc.total_credit || 0),
+      };
+      byId.set(acc.id, row);
+      if (!isSummary) {
+        totals.debit += row.total_debit;
+        totals.credit += row.total_credit;
+        summaryByType[acc.account_type] = summaryByType[acc.account_type] || { debit: 0, credit: 0 };
+        summaryByType[acc.account_type].debit += row.total_debit;
+        summaryByType[acc.account_type].credit += row.total_credit;
+      }
+    }
+
+    const diff = Number((totals.debit - totals.credit).toFixed(2));
+    return {
+      period: { start_date, end_date },
+      branch_id,
+      accounts: Array.from(byId.values()),
+      totals,
+      balanced: Math.abs(diff) < 0.01,
+      difference: diff,
+      summary_by_type: summaryByType,
+    };
+  }
+
+  // قائمة الدخل: الإيرادات ناقص المصروفات ضمن فترة محددة.
+  // رصيد حسابات الإيراد دائن، ورصيد حسابات المصروف مدين.
+  incomeStatement({ start_date, end_date, branch_id = 1 } = {}) {
+    let sql = `
+      SELECT
+        a.id,
+        a.code,
+        a.name,
+        a.account_type,
+        a.parent_id,
+        COALESCE(SUM(jel.debit), 0) AS total_debit,
+        COALESCE(SUM(jel.credit), 0) AS total_credit
+      FROM chart_of_accounts a
+      LEFT JOIN journal_entry_lines jel ON jel.account_id = a.id
+      LEFT JOIN journal_entries je ON je.id = jel.journal_entry_id AND je.is_deleted = 0
+      WHERE a.is_deleted = 0 AND a.account_type IN ('revenue', 'expense')
+    `;
+    const params = [];
+    if (branch_id) { sql += ' AND COALESCE(je.branch_id, ?) = ?'; params.push(branch_id, branch_id); }
+    if (start_date) { sql += ' AND COALESCE(je.date, ?) >= ?'; params.push(start_date, start_date); }
+    if (end_date) { sql += ' AND COALESCE(je.date, ?) <= ?'; params.push(end_date, end_date); }
+    sql += ' GROUP BY a.id, a.code, a.name, a.account_type, a.parent_id ORDER BY a.account_type ASC, a.code ASC';
+
+    const accounts = this.db.prepare(sql).all(...params);
+
+    const childCounts = this.db
+      .prepare("SELECT parent_id, COUNT(*) AS children FROM chart_of_accounts WHERE is_deleted = 0 AND parent_id IS NOT NULL AND account_type IN ('revenue', 'expense') GROUP BY parent_id")
+      .all();
+    const hasChildren = new Set(childCounts.map((row) => row.parent_id));
+
+    const revenues = [];
+    const expenses = [];
+    let totalRevenue = 0;
+    let totalExpense = 0;
+
+    for (const acc of accounts) {
+      const isSummary = hasChildren.has(acc.id);
+      const debit = Number(acc.total_debit || 0);
+      const credit = Number(acc.total_credit || 0);
+      if (acc.account_type === 'revenue') {
+        const amount = credit - debit;
+        if (!isSummary) totalRevenue += amount;
+        revenues.push({ ...acc, amount, is_summary: isSummary, total_debit: debit, total_credit: credit });
+      } else {
+        const amount = debit - credit;
+        if (!isSummary) totalExpense += amount;
+        expenses.push({ ...acc, amount, is_summary: isSummary, total_debit: debit, total_credit: credit });
+      }
+    }
+
+    const netProfit = Number((totalRevenue - totalExpense).toFixed(2));
+    return {
+      period: { start_date, end_date },
+      branch_id,
+      revenues,
+      expenses,
+      total_revenue: Number(totalRevenue.toFixed(2)),
+      total_expense: Number(totalExpense.toFixed(2)),
+      net_profit: netProfit,
+      is_loss: netProfit < 0,
+    };
+  }
+
+  // الميزانية العمومية: الأصول = الخصوم + حقوق الملكية في تاريخ محدد (لحظة واحدة).
+  // الأصل مدين والخصم من حسابه دائن؛ الخصوم وحقوق الملكية دائنة.
+  // أرباح/خسائر الفترة الحالية تُرحّل ضمن حقوق الملكية (حساب أرباح/خسائر العام
+  // الحالي) لأن الإيرادات والمصروفات تُغلق نظرياً في نهاية الفترة. بدون هذه
+  // الترحيلة لا تتوازن الميزانية افتراضياً.
+  balanceSheet({ as_of_date, branch_id = 1 } = {}) {
+    let sql = `
+      SELECT
+        a.id,
+        a.code,
+        a.name,
+        a.account_type,
+        a.parent_id,
+        COALESCE(SUM(jel.debit), 0) AS total_debit,
+        COALESCE(SUM(jel.credit), 0) AS total_credit
+      FROM chart_of_accounts a
+      LEFT JOIN journal_entry_lines jel ON jel.account_id = a.id
+      LEFT JOIN journal_entries je ON je.id = jel.journal_entry_id AND je.is_deleted = 0
+      WHERE a.is_deleted = 0 AND a.account_type IN ('asset', 'liability', 'equity')
+    `;
+    const params = [];
+    if (branch_id) { sql += ' AND COALESCE(je.branch_id, ?) = ?'; params.push(branch_id, branch_id); }
+    if (as_of_date) { sql += ' AND COALESCE(je.date, ?) <= ?'; params.push(as_of_date, as_of_date); }
+    sql += ' GROUP BY a.id, a.code, a.name, a.account_type, a.parent_id ORDER BY a.account_type ASC, a.code ASC';
+
+    const accounts = this.db.prepare(sql).all(...params);
+
+    const childCounts = this.db
+      .prepare("SELECT parent_id, COUNT(*) AS children FROM chart_of_accounts WHERE is_deleted = 0 AND parent_id IS NOT NULL AND account_type IN ('asset', 'liability', 'equity') GROUP BY parent_id")
+      .all();
+    const hasChildren = new Set(childCounts.map((row) => row.parent_id));
+
+    const groups = { asset: [], liability: [], equity: [] };
+    const totals = { asset: 0, liability: 0, equity: 0 };
+
+    for (const acc of accounts) {
+      const isSummary = hasChildren.has(acc.id);
+      const debit = Number(acc.total_debit || 0);
+      const credit = Number(acc.total_credit || 0);
+      const amount = acc.account_type === 'asset' ? debit - credit : credit - debit;
+      groups[acc.account_type].push({ ...acc, amount, is_summary: isSummary, total_debit: debit, total_credit: credit });
+      if (!isSummary) totals[acc.account_type] += amount;
+    }
+
+    // رحّل صافي ربح/خسارة الفترة الحالية إلى حقوق الملكية. الإيراد دائن
+    // والمصروف مدين، فالفرق بينهما يمثل النتيجة التي لم تُرحّل بعد.
+    const periodResult = this._periodResult({ as_of_date, branch_id });
+    if (Math.abs(periodResult) >= 0.01) {
+      const currentResultAccount = accounts.find((acc) => acc.account_type === 'equity' && !hasChildren.has(acc.id) && /العام|الجاري|الحالي|Current/i.test(acc.name))
+        || accounts.find((acc) => acc.account_type === 'equity' && !hasChildren.has(acc.id));
+      if (currentResultAccount) {
+        const existing = groups.equity.find((row) => row.id === currentResultAccount.id);
+        if (existing) {
+          existing.amount = Number((existing.amount + periodResult).toFixed(2));
+        } else {
+          groups.equity.push({
+            ...currentResultAccount,
+            amount: Number(periodResult.toFixed(2)),
+            is_summary: false,
+            total_debit: periodResult < 0 ? Math.abs(periodResult) : 0,
+            total_credit: periodResult > 0 ? periodResult : 0,
+          });
+        }
+        totals.equity = Number((totals.equity + periodResult).toFixed(2));
+      }
+    }
+
+    const totalAssets = Number(totals.asset.toFixed(2));
+    const totalLiabilities = Number(totals.liability.toFixed(2));
+    const totalEquity = Number(totals.equity.toFixed(2));
+    const totalLiabilitiesAndEquity = Number((totalLiabilities + totalEquity).toFixed(2));
+    const diff = Number((totalAssets - totalLiabilitiesAndEquity).toFixed(2));
+
+    return {
+      as_of: as_of_date,
+      branch_id,
+      assets: groups.asset,
+      liabilities: groups.liability,
+      equity: groups.equity,
+      current_period_result: Number(periodResult.toFixed(2)),
+      total_assets: totalAssets,
+      total_liabilities: totalLiabilities,
+      total_equity: totalEquity,
+      total_liabilities_and_equity: totalLiabilitiesAndEquity,
+      balanced: Math.abs(diff) < 0.01,
+      difference: diff,
+    };
+  }
+
+  // صافي نتيجة الفترة (الإيرادات − المصروفات) حتى تاريخ محدد، لترحيلها
+  // ضمن حقوق الملكية في الميزانية العمومية.
+  _periodResult({ as_of_date, branch_id = 1 } = {}) {
+    let sql = `
+      SELECT
+        a.account_type,
+        COALESCE(SUM(jel.debit), 0) AS total_debit,
+        COALESCE(SUM(jel.credit), 0) AS total_credit
+      FROM chart_of_accounts a
+      JOIN journal_entry_lines jel ON jel.account_id = a.id
+      JOIN journal_entries je ON je.id = jel.journal_entry_id AND je.is_deleted = 0
+      WHERE a.is_deleted = 0 AND a.account_type IN ('revenue', 'expense')
+    `;
+    const params = [];
+    if (branch_id) { sql += ' AND je.branch_id = ?'; params.push(branch_id); }
+    if (as_of_date) { sql += ' AND je.date <= ?'; params.push(as_of_date); }
+    sql += ' GROUP BY a.account_type';
+
+    const rows = this.db.prepare(sql).all(...params);
+    let revenue = 0;
+    let expense = 0;
+    for (const row of rows) {
+      if (row.account_type === 'revenue') revenue = Number(row.total_credit || 0) - Number(row.total_debit || 0);
+      else expense = Number(row.total_debit || 0) - Number(row.total_credit || 0);
+    }
+    return Number((revenue - expense).toFixed(2));
+  }
 }
 
 module.exports = new ReportRepository();

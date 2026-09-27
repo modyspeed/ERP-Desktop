@@ -402,6 +402,50 @@ function runDemoInvoiceSeeds(db) {
     db.prepare('INSERT INTO stock_levels (product_id, warehouse_id, quantity) VALUES (?, ?, ?) ON CONFLICT(product_id, warehouse_id) DO UPDATE SET quantity = quantity + excluded.quantity').run(products[2].id, warehouse.id, 4);
     db.prepare("INSERT INTO stock_movements (branch_id, product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, notes, created_by) VALUES (?, ?, ?, 'in', ?, 'purchase_invoice', ?, 'فاتورة شراء تجريبية', 1)").run(branch.id, products[2].id, warehouse.id, 4, purchase.lastInsertRowid);
     db.prepare('UPDATE suppliers SET current_balance = current_balance + ? WHERE id = ?').run(purchaseTotal, supplier.id);
+
+    // مرحلة القيود المحاسبية للفواتير التجريبية. ميزان المراجعة وقائمة
+    // الدخل والميزانية العمومية تُبنى كلياً من journal_entry_lines، لذا يجب
+    // أن تنشئ البذور نفس القيود المتوازنة التي ينشئها مسار حفظ الفاتورة
+    // العادي (مدين الصندوق/العملاء + دائن الإيراد + دائن ضريبة المبيعات).
+    const { resolveAccount, createJournalEntry } = require('../../utils/journal');
+
+    const saleCash = saleTotal / 2;
+    const saleReceivable = saleTotal - saleCash;
+    const saleLines = [];
+    const saleRevAcc = resolveAccount(db, '4110', 'revenue', 'مبيعات');
+    const saleTaxAcc = resolveAccount(db, '2210', 'liability', 'قيمة المضافة');
+    const saleCashAcc = resolveAccount(db, '1110', 'asset', 'صندوق');
+    const saleRecAcc = resolveAccount(db, '1210', 'asset', 'عملاء');
+    if (saleCash > 0 && saleCashAcc) saleLines.push({ account_id: saleCashAcc, debit: saleCash, credit: 0 });
+    if (saleReceivable > 0 && saleRecAcc) saleLines.push({ account_id: saleRecAcc, debit: saleReceivable, credit: 0 });
+    if (saleRevAcc) saleLines.push({ account_id: saleRevAcc, debit: 0, credit: saleSubtotal });
+    if (saleTax > 0 && saleTaxAcc) saleLines.push({ account_id: saleTaxAcc, debit: 0, credit: saleTax });
+    createJournalEntry(db, {
+      branch_id: branch.id,
+      description: `فاتورة بيع ${sale.invoice_number || 'DEMO-SALE-001'}`,
+      reference_type: 'sales_invoice',
+      reference_id: sale.lastInsertRowid,
+      lines: saleLines,
+      created_by: 1,
+    });
+
+    // فاتورة الشراء غير المسددة: مدين المخزون + مدين ضريبة القيمة المضافة
+    // القابلة للخصم / دائن الموردين.
+    const purchaseLines = [];
+    const purchaseInvAcc = resolveAccount(db, '1330', 'asset', 'مخزون تام');
+    const purchaseVatAcc = resolveAccount(db, '1530', 'asset', 'القيمة المضافة القابلة للخصم');
+    const purchasePayAcc = resolveAccount(db, '2110', 'liability', 'الموردون');
+    if (purchaseInvAcc) purchaseLines.push({ account_id: purchaseInvAcc, debit: purchaseSubtotal, credit: 0 });
+    if (purchaseTax > 0 && purchaseVatAcc) purchaseLines.push({ account_id: purchaseVatAcc, debit: purchaseTax, credit: 0 });
+    if (purchasePayAcc) purchaseLines.push({ account_id: purchasePayAcc, debit: 0, credit: purchaseTotal });
+    createJournalEntry(db, {
+      branch_id: branch.id,
+      description: `فاتورة شراء ${purchase.invoice_number || 'DEMO-PURCHASE-001'}`,
+      reference_type: 'purchase_invoice',
+      reference_id: purchase.lastInsertRowid,
+      lines: purchaseLines,
+      created_by: 1,
+    });
   })();
 }
 

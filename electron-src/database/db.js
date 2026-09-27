@@ -209,11 +209,69 @@ function initDatabase() {
     runTaxRuleSeeds(dbInstance);
     runTaxTemplateSeeds(dbInstance);
     runDemoInvoiceSeeds(dbInstance);
+    backfillMissingJournalEntries(dbInstance);
   } catch (err) {
     console.error('Error running seeders:', err);
   }
 
   return dbInstance;
+}
+
+// القيود المحاسبية ضرورية لتقارير ميزان المراجعة وقائمة الدخل والميزانية
+// العمومية. قواعد البيانات القديمة التي أُنشئت قبل إضافة مرحلة القيود إلى
+// البذور تحتوي على فواتير بدون أي قيود، لذا تُنشأ هنا مرة واحدة بشكل
+// متوازن لتتوافق مع القيود التي ينشئها مسار حفظ الفاتورة العادي.
+function backfillMissingJournalEntries(db) {
+  const marker = db.prepare("SELECT COUNT(*) AS total FROM journal_entries WHERE reference_type IN ('sales_invoice', 'purchase_invoice') AND description LIKE 'فاتورة%'").get();
+  if (marker.total > 0) return;
+
+  const { resolveAccount, createJournalEntry } = require('../utils/journal');
+  const branches = db.prepare('SELECT id FROM branches').all();
+  if (!branches.length) return;
+
+  for (const branch of branches) {
+    const sales = db.prepare('SELECT id, invoice_number, subtotal, tax_amount, total, paid_amount FROM sales_invoices WHERE is_deleted = 0 AND branch_id = ?').all(branch.id);
+    for (const inv of sales) {
+      const paid = Number(inv.paid_amount || 0);
+      const remaining = Number(inv.total || 0) - paid;
+      const lines = [];
+      const cashAcc = resolveAccount(db, '1110', 'asset', 'صندوق');
+      const recAcc = resolveAccount(db, '1210', 'asset', 'عملاء');
+      const revAcc = resolveAccount(db, '4110', 'revenue', 'مبيعات');
+      const taxAcc = resolveAccount(db, '2210', 'liability', 'قيمة المضافة');
+      if (paid > 0 && cashAcc) lines.push({ account_id: cashAcc, debit: paid, credit: 0 });
+      if (remaining > 0 && recAcc) lines.push({ account_id: recAcc, debit: remaining, credit: 0 });
+      if (revAcc) lines.push({ account_id: revAcc, debit: 0, credit: Number(inv.subtotal || 0) });
+      if (Number(inv.tax_amount || 0) > 0 && taxAcc) lines.push({ account_id: taxAcc, debit: 0, credit: Number(inv.tax_amount) });
+      createJournalEntry(db, {
+        branch_id: branch.id,
+        description: `فاتورة بيع ${inv.invoice_number}`,
+        reference_type: 'sales_invoice',
+        reference_id: inv.id,
+        lines,
+        created_by: 1,
+      });
+    }
+
+    const purchases = db.prepare('SELECT id, invoice_number, subtotal, tax_amount, total FROM purchase_invoices WHERE is_deleted = 0 AND branch_id = ?').all(branch.id);
+    for (const inv of purchases) {
+      const lines = [];
+      const invAcc = resolveAccount(db, '1330', 'asset', 'مخزون تام');
+      const vatAcc = resolveAccount(db, '1530', 'asset', 'القيمة المضافة القابلة للخصم');
+      const payAcc = resolveAccount(db, '2110', 'liability', 'الموردون');
+      if (invAcc) lines.push({ account_id: invAcc, debit: Number(inv.subtotal || 0), credit: 0 });
+      if (Number(inv.tax_amount || 0) > 0 && vatAcc) lines.push({ account_id: vatAcc, debit: Number(inv.tax_amount), credit: 0 });
+      if (payAcc) lines.push({ account_id: payAcc, debit: 0, credit: Number(inv.total || 0) });
+      createJournalEntry(db, {
+        branch_id: branch.id,
+        description: `فاتورة شراء ${inv.invoice_number}`,
+        reference_type: 'purchase_invoice',
+        reference_id: inv.id,
+        lines,
+        created_by: 1,
+      });
+    }
+  }
 }
 
 function getDatabase() {
