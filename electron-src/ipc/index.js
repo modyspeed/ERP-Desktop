@@ -59,6 +59,15 @@ function registerAllIPC(ipcMain) {
     }
   });
 
+  ipcMain.handle('hardware:preview-receipt', async (event, params) => {
+    try {
+      const result = await printerAdapter.previewReceipt(params);
+      return { success: true, data: result };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
   ipcMain.handle('hardware:open-cashdrawer', async () => {
     try {
       const result = await cashDrawerAdapter.openDrawer();

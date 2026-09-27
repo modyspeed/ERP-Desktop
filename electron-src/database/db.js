@@ -80,6 +80,10 @@ function initDatabase() {
     if (!settingsColumns.includes('business_type')) {
       dbInstance.exec("ALTER TABLE company_settings ADD COLUMN business_type TEXT DEFAULT 'general'");
     }
+    if (!settingsColumns.includes('invoice_paper_size')) {
+      // حجم ورق طباعة الفاتورة: 'a4' | 'thermal_80' | 'thermal_58'
+      dbInstance.exec("ALTER TABLE company_settings ADD COLUMN invoice_paper_size TEXT DEFAULT 'a4'");
+    }
     const quotationColumns = dbInstance.prepare('PRAGMA table_info(quotations)').all().map((column) => column.name);
     if (!quotationColumns.includes('notes')) dbInstance.exec('ALTER TABLE quotations ADD COLUMN notes TEXT');
     const purchaseOrderColumns = dbInstance.prepare('PRAGMA table_info(purchase_orders)').all().map((column) => column.name);

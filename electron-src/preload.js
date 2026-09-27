@@ -235,6 +235,7 @@ contextBridge.exposeInMainWorld('api', {
 
   hardware: {
     printReceipt: (params) => invokeWithUser('hardware:print-receipt', params),
+    previewReceipt: (params) => invokeWithUser('hardware:preview-receipt', params),
     openCashDrawer: () => invokeWithUser('hardware:open-cashdrawer'),
   },
 

@@ -31,7 +31,15 @@ import {
   Globe,
   Landmark,
   WandSparkles,
+  Printer,
+  Eye,
 } from 'lucide-react';
+
+const invoicePaperSizeOptions = [
+  { value: 'a4', widthMm: 210, label: 'A4 — ورق عادي (210 مم)' },
+  { value: 'thermal_80', widthMm: 80, label: 'حراري 80 مم — طابعة فواتير' },
+  { value: 'thermal_58', widthMm: 58, label: 'حراري 58 مم — طابعة فواتير صغيرة' },
+];
 
 const currencyOptions = [
   { code: 'SAR', name: 'ريال سعودي' },
@@ -427,6 +435,13 @@ const SettingsPage = () => {
     tax_enabled: 1,
   });
 
+  const [printingForm, setPrintingForm] = useState({
+    invoice_paper_size: 'a4',
+    invoice_prefix_sales: 'INV-',
+    invoice_prefix_purchase: 'PO-',
+  });
+  const [previewing, setPreviewing] = useState(false);
+
   // Branch modal state
   const [branchModalOpen, setBranchModalOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState(null);
@@ -634,6 +649,12 @@ const SettingsPage = () => {
         purchase_tax_percentage: settings.purchase_tax_percentage ?? settings.tax_percentage ?? 15.0,
         tax_enabled: settings.tax_enabled !== undefined ? settings.tax_enabled : 1,
       });
+
+      setPrintingForm({
+        invoice_paper_size: settings.invoice_paper_size || 'a4',
+        invoice_prefix_sales: settings.invoice_prefix_sales || 'INV-',
+        invoice_prefix_purchase: settings.invoice_prefix_purchase || 'PO-',
+      });
     }
   }, [settings]);
 
@@ -669,6 +690,35 @@ const SettingsPage = () => {
       toast.error(err.message || 'فشل حفظ إعدادات الفواتير');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSavePrinting = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await updateSettings(printingForm, user?.id);
+      toast.success(t('common.saved'));
+    } catch (err) {
+      toast.error(err.message || 'فشل حفظ إعدادات الطباعة');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePreviewPrinting = async () => {
+    setPreviewing(true);
+    try {
+      const response = await window.api?.hardware?.previewReceipt({
+        paper_size: printingForm.invoice_paper_size,
+        settings: { ...settings, ...printingForm },
+      });
+      if (response?.success) toast.success(t('settings.printPreviewOpened'));
+      else toast.error(response?.error || 'تعذر فتح المعاينة');
+    } catch (err) {
+      toast.error(err.message || 'تعذر فتح المعاينة');
+    } finally {
+      setPreviewing(false);
     }
   };
 
@@ -769,6 +819,7 @@ const SettingsPage = () => {
     { id: 'company', label: t('settings.companyTab'), icon: Building2 },
     { id: 'theme', label: t('settings.themeTab'), icon: Palette },
     { id: 'invoicing', label: t('settings.invoicingTab'), icon: FileSpreadsheet },
+    { id: 'printing', label: t('settings.printingTab'), icon: Printer },
     { id: 'accounting', label: 'الدليل المحاسبي', icon: Landmark },
     { id: 'branches', label: t('settings.branchesTab'), icon: Network },
     { id: 'system', label: t('settings.systemTab'), icon: Cpu },
@@ -1098,10 +1149,6 @@ const SettingsPage = () => {
               <Input label="ضريبة المبيعات (مخرجات) %" type="number" min="0" step="0.1" value={invoicingForm.sales_tax_percentage} onChange={(e) => setInvoicingForm({ ...invoicingForm, sales_tax_percentage: e.target.value })} required />
 
               <Input label="ضريبة المشتريات (مدخلات قابلة للخصم) %" type="number" min="0" step="0.1" value={invoicingForm.purchase_tax_percentage} onChange={(e) => setInvoicingForm({ ...invoicingForm, purchase_tax_percentage: e.target.value })} required />
-
-              <Input label={t('settings.invoicePrefixSales')} value={invoicingForm.invoice_prefix_sales} onChange={(e) => setInvoicingForm({ ...invoicingForm, invoice_prefix_sales: e.target.value })} helperText="مثال: INV- ينتج عنها INV-2026-00001" />
-
-              <Input label={t('settings.invoicePrefixPurchase')} value={invoicingForm.invoice_prefix_purchase} onChange={(e) => setInvoicingForm({ ...invoicingForm, invoice_prefix_purchase: e.target.value })} helperText="مثال: PO- ينتج عنها PO-2026-00001" />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1209,6 +1256,46 @@ const SettingsPage = () => {
               </div>
             </form>
           </Modal>
+        </Card>
+      )}
+
+      {/* Tab 4: Printing & Numbering */}
+      {activeTab === 'printing' && (
+        <Card title={t('settings.printingTab')}>
+          <form onSubmit={handleSavePrinting} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                {t('settings.invoicePaperSize')}
+                <select
+                  value={printingForm.invoice_paper_size}
+                  onChange={(e) => setPrintingForm({ ...printingForm, invoice_paper_size: e.target.value })}
+                  style={{ padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-surface)', color: 'var(--text-main)' }}
+                >
+                  {invoicePaperSizeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 400 }}>
+                  {t('settings.invoicePaperSizeHint')}
+                </span>
+              </label>
+
+              <Input label={t('settings.invoicePrefixSales')} value={printingForm.invoice_prefix_sales} onChange={(e) => setPrintingForm({ ...printingForm, invoice_prefix_sales: e.target.value })} helperText={t('settings.invoicePrefixSalesHint')} />
+
+              <Input label={t('settings.invoicePrefixPurchase')} value={printingForm.invoice_prefix_purchase} onChange={(e) => setPrintingForm({ ...printingForm, invoice_prefix_purchase: e.target.value })} helperText={t('settings.invoicePrefixPurchaseHint')} />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <Button type="submit" icon={Save} disabled={loading}>{t('common.save')}</Button>
+              <Button type="button" variant="secondary" icon={Eye} disabled={previewing} onClick={handlePreviewPrinting}>
+                {previewing ? t('settings.printPreviewOpening') : t('settings.printPreview')}
+              </Button>
+            </div>
+
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
+              {t('settings.printingAppliesHint')}
+            </p>
+          </form>
         </Card>
       )}
 
