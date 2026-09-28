@@ -1,0 +1,98 @@
+{
+  "country_code": "AE",
+  "tax_rules": [
+    {
+      "transaction_type": "sale",
+      "name": "ضريبة القيمة المضافة الإماراتية",
+      "short_name": "VAT",
+      "rate": 5,
+      "tax_type": "vat",
+      "effective_from": "2018-01-01",
+      "effective_to": null,
+      "is_default": 1,
+      "calculation_method": "additive",
+      "is_enabled": 1,
+      "notes": "ضريبة مبيعات / مخرجات"
+    },
+    {
+      "transaction_type": "purchase",
+      "name": "ضريبة القيمة المضافة الإماراتية",
+      "short_name": "VAT",
+      "rate": 5,
+      "tax_type": "vat",
+      "effective_from": "2018-01-01",
+      "effective_to": null,
+      "is_default": 0,
+      "calculation_method": "input",
+      "is_enabled": 1,
+      "notes": "ضريبة مشتريات / مدخلات قابلة للخصم محاسبياً"
+    },
+    {
+      "transaction_type": "service",
+      "name": "ضريبة القيمة المضافة الإماراتية",
+      "short_name": "VAT",
+      "rate": 5,
+      "tax_type": "vat",
+      "effective_from": "2018-01-01",
+      "effective_to": null,
+      "is_default": 0,
+      "calculation_method": "additive",
+      "is_enabled": 1,
+      "notes": "خدمات"
+    },
+    {
+      "transaction_type": "consulting",
+      "name": "ضريبة القيمة المضافة الإماراتية",
+      "short_name": "VAT",
+      "rate": 5,
+      "tax_type": "vat",
+      "effective_from": "2018-01-01",
+      "effective_to": null,
+      "is_default": 0,
+      "calculation_method": "additive",
+      "is_enabled": 1,
+      "notes": "استشارات"
+    }
+  ],
+  "tax_rates": [
+    {
+      "tax_code": "VAT_STD",
+      "name_ar": "ضريبة القيمة المضافة (المعدل القياسي)",
+      "name_en": "VAT Standard Rate",
+      "tax_type": "vat",
+      "rate_percentage": 5,
+      "applies_to": "both",
+      "is_default": true,
+      "is_withholding": false,
+      "effective_from": "2018-01-01",
+      "effective_to": null,
+      "is_active": true
+    },
+    {
+      "tax_code": "VAT_ZERO",
+      "name_ar": "ضريبة القيمة المضافة (سعر صفر)",
+      "name_en": "VAT Zero Rate",
+      "tax_type": "vat",
+      "rate_percentage": 0,
+      "applies_to": "both",
+      "is_default": false,
+      "is_withholding": false,
+      "effective_from": "2018-01-01",
+      "effective_to": null,
+      "is_active": true
+    },
+    {
+      "tax_code": "VAT_EXEMPT",
+      "name_ar": "معفاة من ضريبة القيمة المضافة",
+      "name_en": "VAT Exempt",
+      "tax_type": "vat",
+      "rate_percentage": 0,
+      "applies_to": "both",
+      "is_default": false,
+      "is_withholding": false,
+      "effective_from": "2018-01-01",
+      "effective_to": null,
+      "is_active": true
+    }
+  ]
+}
