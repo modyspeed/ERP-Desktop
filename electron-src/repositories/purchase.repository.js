@@ -79,6 +79,40 @@ class PurchaseRepository extends BaseRepository {
         insertMovement.run(branch_id, item.product.id, warehouse_id, item.quantity, invoice.lastInsertRowid, `شراء ${number}`, created_by || null);
       }
       if (remaining > 0) db.prepare('UPDATE suppliers SET current_balance = current_balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(remaining, supplier_id);
+
+      // قيد محاسبي لفاتورة الشراء: مدين المخزون (subtotal) + مدين ضريبة القيمة
+      // المضافة القابلة للاسترداد (tax_amount) / دائن الموردين (total). عند الدفع
+      // وقت الإنشاء يُضاف مدين الموردين / دائن الصندوق بنفس منطق collectPayment.
+      const journalLines = [];
+      const inventoryAccount = resolveAccount(db, '1330', 'asset', 'مخزون');
+      const taxAccount = resolveAccount(db, '1530', 'asset', 'القيمة المضافة');
+      const payableAccount = resolveAccount(db, '2110', 'liability', 'الموردون');
+      const cashAccount = resolveAccount(db, '1110', 'asset', 'صندوق');
+
+      if (inventoryAccount) journalLines.push({ account_id: inventoryAccount, debit: subtotal, credit: 0 });
+      for (const detail of taxSummary.details) {
+        if (!taxAccount) break;
+        const amount = Number(detail.amount || 0);
+        if (amount > 0) journalLines.push({ account_id: taxAccount, debit: amount, credit: 0 });
+        else if (amount < 0) journalLines.push({ account_id: taxAccount, debit: 0, credit: -amount });
+      }
+      if (payableAccount) journalLines.push({ account_id: payableAccount, debit: 0, credit: total });
+      if (paid > 0) {
+        if (payableAccount) journalLines.push({ account_id: payableAccount, debit: paid, credit: 0 });
+        if (cashAccount) journalLines.push({ account_id: cashAccount, debit: 0, credit: paid });
+      }
+
+      const journalEntry = createJournalEntry(db, {
+        branch_id,
+        description: `فاتورة شراء ${number}`,
+        reference_type: 'purchase_invoice',
+        reference_id: invoice.lastInsertRowid,
+        lines: journalLines,
+        created_by,
+      });
+      // قيد غير متوازن أو حساب ناقص: نلغي العملية كلها بدل حفظ فاتورة بلا قيد.
+      if (!journalEntry) throw new Error('تعذر إنشاء القيد المحاسبي لفاتورة الشراء (حساب ناقص أو قيد غير متوازن)');
+
       return db.prepare('SELECT * FROM purchase_invoices WHERE id = ?').get(invoice.lastInsertRowid);
     })();
   }

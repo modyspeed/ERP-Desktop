@@ -141,6 +141,46 @@ class ReturnRepository extends BaseRepository {
       }
 
       db.prepare('UPDATE purchase_returns SET total_amount = ? WHERE id = ?').run(totalAmount, result.lastInsertRowid);
+
+      // قيد عكسي لمرتجع الشراء: مدين الموردين (total + ضريبة) / دائن المخزون
+      // (subtotal) + دائن ضريبة القيمة المضافة القابلة للاسترداد — عكس قيد
+      // إنشاء فاتورة الشراء تماماً.
+      const { resolveAccount, createJournalEntry } = require('../utils/journal');
+      const { calculateTaxes } = require('../utils/tax');
+      const settings = db.prepare('SELECT tax_enabled, tax_country_code, tax_percentage, purchase_tax_percentage FROM company_settings LIMIT 1').get() || {};
+      const taxRate = settings.tax_enabled ? Number(settings.purchase_tax_percentage ?? settings.tax_percentage ?? 0) : 0;
+      const taxSummary = settings.tax_enabled ? calculateTaxes(db, { countryCode: settings.tax_country_code || 'SA', transactionType: 'purchase', subtotal: totalAmount, fallbackRate: taxRate }) : { details: [], totalTax: 0 };
+      const taxAmount = taxSummary.totalTax;
+
+      const journalLines = [];
+      const inventoryAccount = resolveAccount(db, '1330', 'asset', 'مخزون');
+      const taxAccount = resolveAccount(db, '1530', 'asset', 'القيمة المضافة');
+      const payableAccount = resolveAccount(db, '2110', 'liability', 'الموردون');
+
+      if (payableAccount) journalLines.push({ account_id: payableAccount, debit: totalAmount + taxAmount, credit: 0 });
+      if (inventoryAccount) journalLines.push({ account_id: inventoryAccount, debit: 0, credit: totalAmount });
+      for (const detail of taxSummary.details) {
+        if (!taxAccount) break;
+        const amount = Number(detail.amount || 0);
+        if (amount > 0) journalLines.push({ account_id: taxAccount, debit: 0, credit: amount });
+        else if (amount < 0) journalLines.push({ account_id: taxAccount, debit: -amount, credit: 0 });
+      }
+
+      const journalEntry = createJournalEntry(db, {
+        branch_id,
+        description: `مرتجع شراء ${returnNumber}`,
+        reference_type: 'purchase_return',
+        reference_id: result.lastInsertRowid,
+        lines: journalLines,
+        created_by,
+      });
+      if (!journalEntry) throw new Error('تعذر إنشاء القيد المحاسبي لمرتجع الشراء (حساب ناقص أو قيد غير متوازن)');
+
+      // المرتجع يقلل ذمة المورد بنفس قدر القيد المدين على حساب الموردين.
+      if (invoice?.supplier_id && (totalAmount + taxAmount) > 0) {
+        db.prepare('UPDATE suppliers SET current_balance = MAX(0, current_balance - ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(totalAmount + taxAmount, invoice.supplier_id);
+      }
+
       return { return_data: db.prepare('SELECT * FROM purchase_returns WHERE id = ?').get(result.lastInsertRowid), items: this.getPurchaseReturnItems(result.lastInsertRowid) };
     })();
   }
