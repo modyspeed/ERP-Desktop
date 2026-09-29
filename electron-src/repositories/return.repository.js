@@ -44,11 +44,14 @@ class ReturnRepository extends BaseRepository {
       const insertMovement = db.prepare(`INSERT INTO stock_movements (branch_id, product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, notes, created_by) VALUES (?, ?, ?, 'in', ?, 'sales_return', ?, ?, ?)`);
 
       let totalAmount = 0;
+      // تكلفة البضاعة المرتجعة = مجموع (الكمية المرتجعة × تكلفة الوحدة).
+      let cogsAmount = 0;
       for (const item of items) {
-        const product = db.prepare('SELECT sale_price FROM products WHERE id = ? AND branch_id = ?').get(item.product_id, branch_id);
+        const product = db.prepare('SELECT sale_price, cost_price FROM products WHERE id = ? AND branch_id = ?').get(item.product_id, branch_id);
         const unitPrice = Number(item.unit_price ?? product?.sale_price ?? 0);
         const lineTotal = Number(item.qty) * unitPrice;
         totalAmount += lineTotal;
+        cogsAmount += Number(item.qty) * Number(product?.cost_price ?? 0);
         insertItem.run(result.lastInsertRowid, item.product_id, item.qty, unitPrice);
         updateStock.run(item.product_id, invoice?.warehouse_id, item.qty);
         insertMovement.run(branch_id, item.product_id, invoice?.warehouse_id, item.qty, result.lastInsertRowid, `مرتجع بيع - ${returnNumber}`, created_by || null);
@@ -73,6 +76,13 @@ class ReturnRepository extends BaseRepository {
       const revenueAccount = resolveAccount(db, '4110', 'revenue', 'مبيعات');
       const taxAccount = resolveAccount(db, '2210', 'liability', 'قيمة المضافة');
       const receivableAccount = resolveAccount(db, '1210', 'asset', 'عملاء');
+      // عكس تكلفة البضاعة المباعة: مدين المخزون (1330) / دائن تكلفة البضاعة (5100).
+      const cogsAccount = resolveAccount(db, '5100', 'expense', 'تكلفة');
+      const inventoryAccount = resolveAccount(db, '1330', 'asset', 'مخزون');
+      if (cogsAmount > 0 && cogsAccount && inventoryAccount) {
+        journalLines.push({ account_id: inventoryAccount, debit: cogsAmount, credit: 0 });
+        journalLines.push({ account_id: cogsAccount, debit: 0, credit: cogsAmount });
+      }
 
       if (receivableAccount) journalLines.push({ account_id: receivableAccount, debit: 0, credit: totalAmount + taxAmount });
       if (revenueAccount) journalLines.push({ account_id: revenueAccount, debit: totalAmount, credit: 0 });

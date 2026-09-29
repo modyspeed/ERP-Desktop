@@ -62,7 +62,7 @@ class QuotationRepository extends BaseRepository {
 
   getQuotationItems(quotationId) {
     return this.db.prepare(`
-      SELECT qi.*, p.name AS product_name, p.sku
+      SELECT qi.*, p.name AS product_name, p.sku, p.cost_price
       FROM quotation_items qi
       LEFT JOIN products p ON p.id = qi.product_id
       WHERE qi.quotation_id = ?
@@ -111,12 +111,15 @@ class QuotationRepository extends BaseRepository {
 
       // Calculate totals from quotation items
       let subtotal = 0;
+      // تكلفة البضاعة المباعة (COGS) = مجموع (الكمية × تكلفة الوحدة) لكل صنف.
+      let cogsAmount = 0;
       const normalizedItems = [];
       for (const item of items) {
         const quantity = Number(item.qty);
         const unitPrice = Number(item.unit_price ?? 0);
         const lineTotal = quantity * unitPrice;
         subtotal += lineTotal;
+        cogsAmount += quantity * Number(item.cost_price ?? 0);
         normalizedItems.push({ product: { id: item.product_id, name: item.product_name, sale_price: unitPrice }, quantity, unitPrice, lineTotal });
       }
 
@@ -151,6 +154,13 @@ class QuotationRepository extends BaseRepository {
       const taxAccount = resolveAccount(db, '2210', 'liability', 'قيمة المضافة');
       const cashAccount = resolveAccount(db, '1110', 'asset', 'صندوق');
       const receivableAccount = resolveAccount(db, '1210', 'asset', 'عملاء');
+      // تكلفة البضاعة المباعة: مدين حساب التكلفة (5100) / دائن المخزون (1330).
+      const cogsAccount = resolveAccount(db, '5100', 'expense', 'تكلفة');
+      const inventoryAccount = resolveAccount(db, '1330', 'asset', 'مخزون');
+      if (cogsAmount > 0 && cogsAccount && inventoryAccount) {
+        journalLines.push({ account_id: cogsAccount, debit: cogsAmount, credit: 0 });
+        journalLines.push({ account_id: inventoryAccount, debit: 0, credit: cogsAmount });
+      }
 
       if (paid > 0 && cashAccount) journalLines.push({ account_id: cashAccount, debit: paid, credit: 0 });
       if (remaining > 0 && receivableAccount) journalLines.push({ account_id: receivableAccount, debit: remaining, credit: 0 });

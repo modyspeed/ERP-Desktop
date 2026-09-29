@@ -160,7 +160,11 @@ class ReportRepository extends BaseRepository {
         total_credit: Number(acc.total_credit || 0),
       };
       byId.set(acc.id, row);
-      if (!isSummary) {
+      // الحساب الأب الذي تُرحّل عليه قيود مباشرة (مثل 5100 تكلفة البضاعة
+      // المباعة) ليس حساب ملخص صرفًا؛ تُحتسب حركته في المجاميع وإلا لن
+      // يتوازن ميزان المراجعة وتختفي قيوده من التقارير.
+      const hasMovement = row.total_debit > 0 || row.total_credit > 0;
+      if (!isSummary || hasMovement) {
         totals.debit += row.total_debit;
         totals.credit += row.total_credit;
         summaryByType[acc.account_type] = summaryByType[acc.account_type] || { debit: 0, credit: 0 };
@@ -220,13 +224,15 @@ class ReportRepository extends BaseRepository {
       const isSummary = hasChildren.has(acc.id);
       const debit = Number(acc.total_debit || 0);
       const credit = Number(acc.total_credit || 0);
+      // حساب أب له قيود مباشرة (مثل 5100) يُحتسب رصده في الإجماليات.
+      const hasMovement = debit > 0 || credit > 0;
       if (acc.account_type === 'revenue') {
         const amount = credit - debit;
-        if (!isSummary) totalRevenue += amount;
+        if (!isSummary || hasMovement) totalRevenue += amount;
         revenues.push({ ...acc, amount, is_summary: isSummary, total_debit: debit, total_credit: credit });
       } else {
         const amount = debit - credit;
-        if (!isSummary) totalExpense += amount;
+        if (!isSummary || hasMovement) totalExpense += amount;
         expenses.push({ ...acc, amount, is_summary: isSummary, total_debit: debit, total_credit: credit });
       }
     }
@@ -285,7 +291,9 @@ class ReportRepository extends BaseRepository {
       const credit = Number(acc.total_credit || 0);
       const amount = acc.account_type === 'asset' ? debit - credit : credit - debit;
       groups[acc.account_type].push({ ...acc, amount, is_summary: isSummary, total_debit: debit, total_credit: credit });
-      if (!isSummary) totals[acc.account_type] += amount;
+      // حساب أب له قيود مباشرة يُحتسب رصده في إجمالي المجموعة.
+      const hasMovement = debit > 0 || credit > 0;
+      if (!isSummary || hasMovement) totals[acc.account_type] += amount;
     }
 
     // رحّل صافي ربح/خسارة الفترة الحالية إلى حقوق الملكية. الإيراد دائن

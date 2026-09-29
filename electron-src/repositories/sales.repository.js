@@ -54,6 +54,8 @@ class SalesRepository extends BaseRepository {
     const stockQuery = db.prepare('SELECT quantity FROM stock_levels WHERE product_id = ? AND warehouse_id = ?');
     const normalizedItems = [];
     let subtotal = 0;
+    // تكلفة البضاعة المباعة (COGS) = مجموع (الكمية × تكلفة الوحدة) لكل صنف.
+    let cogsAmount = 0;
 
     for (const item of items) {
       const quantity = Number(item.qty);
@@ -65,6 +67,7 @@ class SalesRepository extends BaseRepository {
       const unitPrice = Number(item.unit_price ?? product.sale_price ?? 0);
       const lineTotal = quantity * unitPrice;
       subtotal += lineTotal;
+      cogsAmount += quantity * Number(product.cost_price ?? 0);
       normalizedItems.push({ product, quantity, unitPrice, lineTotal });
     }
 
@@ -113,6 +116,14 @@ class SalesRepository extends BaseRepository {
       const taxAccount = resolveAccount(db, '2210', 'liability', 'قيمة المضافة');
       const cashAccount = resolveAccount(db, '1110', 'asset', 'صندوق');
       const receivableAccount = resolveAccount(db, '1210', 'asset', 'عملاء');
+      // تكلفة البضاعة المباعة: مدين حساب التكلفة (5100) / دائن المخزون (1330)
+      // بنفس قيمة COGS المحسوبة من الأصنافة. تجاهل السطرين لو لا توجد تكلفة.
+      const cogsAccount = resolveAccount(db, '5100', 'expense', 'تكلفة');
+      const inventoryAccount = resolveAccount(db, '1330', 'asset', 'مخزون');
+      if (cogsAmount > 0 && cogsAccount && inventoryAccount) {
+        journalLines.push({ account_id: cogsAccount, debit: cogsAmount, credit: 0 });
+        journalLines.push({ account_id: inventoryAccount, debit: 0, credit: cogsAmount });
+      }
 
       if (paid > 0 && cashAccount) journalLines.push({ account_id: cashAccount, debit: paid, credit: 0 });
       if (remaining > 0 && receivableAccount) journalLines.push({ account_id: receivableAccount, debit: remaining, credit: 0 });
