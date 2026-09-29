@@ -60,6 +60,7 @@
   { "code": "5110", "name_ar": "تكلفة المواد الخام", "name_en": "Raw Material Cost", "account_type": "expense", "parent_code": "5100" },
   { "code": "5120", "name_ar": "أجور مباشرة", "name_en": "Direct Labor", "account_type": "expense", "parent_code": "5100" },
   { "code": "5130", "name_ar": "تكاليف تصنيع غير مباشرة", "name_en": "Manufacturing Overhead", "account_type": "expense", "parent_code": "5100" },
+  { "code": "5140", "name_ar": "تكلفة بضاعة تجزئة", "name_en": "Cost of Goods Sold - Trading", "account_type": "expense", "parent_code": "5100" },
 
   { "code": "6000", "name_ar": "المصروفات التشغيلية", "name_en": "Operating Expenses", "account_type": "expense", "parent_code": null },
   { "code": "6100", "name_ar": "الرواتب والأجور", "name_en": "Salaries & Wages", "account_type": "expense", "parent_code": "6000" },

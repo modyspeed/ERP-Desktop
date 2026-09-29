@@ -206,6 +206,7 @@ function initDatabase() {
   // Run initial seeders
   try {
     ensureBackupPermissions(dbInstance);
+    migrateCogsLinesToTradingAccount(dbInstance);
     runSeeders(dbInstance);
     runDemoSeeds(dbInstance);
     runTableSeeds(dbInstance);
@@ -219,6 +220,28 @@ function initDatabase() {
   }
 
   return dbInstance;
+}
+
+// ترحيل قيود تكلفة البضاعة المباعة من حساب الأب 5100 إلى الحساب الفرعي
+// الجديد 5140 "تكلفة بضاعة تجزئة". قيود البيع/المرتجع كانت تُرحَّل سابقًا
+// على 5100 نفسه (وهو حساب أب يضم حسابات التصنيع 5110/5120/5130)، مما
+// سيسبب عدًّا مضاعفًا عند تفعيل قسم التصنيع لاحقًا. القاعدة البسيطة في
+// التقارير تستبعد الحسابات الأب من المجاميع، فالترحيل إلى الحساب الفرعي
+// يعيد الأرقام الصحيحة. يُنشأ الحساب إن لم يكن موجودًا، وتُنفذ مرة واحدة.
+function migrateCogsLinesToTradingAccount(db) {
+  const { ensureAccount } = require('../utils/journal');
+
+  const sourceAccount = db.prepare("SELECT id FROM chart_of_accounts WHERE code = '5100' AND is_deleted = 0").get();
+  if (!sourceAccount) return;
+
+  const targetAccount = ensureAccount(db, '5140', 'تكلفة بضاعة تجزئة', 'expense', '5100');
+  if (!targetAccount || targetAccount === sourceAccount.id) return;
+
+  const pending = db.prepare('SELECT COUNT(*) AS total FROM journal_entry_lines WHERE account_id = ?').get(sourceAccount.id).total;
+  if (pending === 0) return;
+
+  db.prepare('UPDATE journal_entry_lines SET account_id = ? WHERE account_id = ?').run(targetAccount, sourceAccount.id);
+  console.log(`Migrated ${pending} COGS journal line(s) from account 5100 to 5140 (تكلفة بضاعة تجزئة).`);
 }
 
 // القيود المحاسبية ضرورية لتقارير ميزان المراجعة وقائمة الدخل والميزانية

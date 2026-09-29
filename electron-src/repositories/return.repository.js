@@ -76,8 +76,8 @@ class ReturnRepository extends BaseRepository {
       const revenueAccount = resolveAccount(db, '4110', 'revenue', 'مبيعات');
       const taxAccount = resolveAccount(db, '2210', 'liability', 'قيمة المضافة');
       const receivableAccount = resolveAccount(db, '1210', 'asset', 'عملاء');
-      // عكس تكلفة البضاعة المباعة: مدين المخزون (1330) / دائن تكلفة البضاعة (5100).
-      const cogsAccount = resolveAccount(db, '5100', 'expense', 'تكلفة');
+      // عكس تكلفة البضاعة المباعة: مدين المخزون (1330) / دائن تكلفة البضاعة (5140).
+      const cogsAccount = resolveAccount(db, '5140', 'expense', 'تكلفة البضاعة');
       const inventoryAccount = resolveAccount(db, '1330', 'asset', 'مخزون');
       if (cogsAmount > 0 && cogsAccount && inventoryAccount) {
         journalLines.push({ account_id: inventoryAccount, debit: cogsAmount, credit: 0 });

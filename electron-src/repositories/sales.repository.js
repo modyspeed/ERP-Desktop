@@ -116,9 +116,9 @@ class SalesRepository extends BaseRepository {
       const taxAccount = resolveAccount(db, '2210', 'liability', 'قيمة المضافة');
       const cashAccount = resolveAccount(db, '1110', 'asset', 'صندوق');
       const receivableAccount = resolveAccount(db, '1210', 'asset', 'عملاء');
-      // تكلفة البضاعة المباعة: مدين حساب التكلفة (5100) / دائن المخزون (1330)
+      // تكلفة البضاعة المباعة: مدين حساب التكلفة (5140) / دائن المخزون (1330)
       // بنفس قيمة COGS المحسوبة من الأصنافة. تجاهل السطرين لو لا توجد تكلفة.
-      const cogsAccount = resolveAccount(db, '5100', 'expense', 'تكلفة');
+      const cogsAccount = resolveAccount(db, '5140', 'expense', 'تكلفة البضاعة');
       const inventoryAccount = resolveAccount(db, '1330', 'asset', 'مخزون');
       if (cogsAmount > 0 && cogsAccount && inventoryAccount) {
         journalLines.push({ account_id: cogsAccount, debit: cogsAmount, credit: 0 });
