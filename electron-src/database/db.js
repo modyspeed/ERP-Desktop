@@ -207,6 +207,7 @@ function initDatabase() {
   try {
     ensureBackupPermissions(dbInstance);
     migrateCogsLinesToTradingAccount(dbInstance);
+    migrateZakatAndExportsOffWithholdingCode(dbInstance);
     runSeeders(dbInstance);
     runDemoSeeds(dbInstance);
     runTableSeeds(dbInstance);
@@ -242,6 +243,56 @@ function migrateCogsLinesToTradingAccount(db) {
 
   db.prepare('UPDATE journal_entry_lines SET account_id = ? WHERE account_id = ?').run(targetAccount, sourceAccount.id);
   console.log(`Migrated ${pending} COGS journal line(s) from account 5100 to 5140 (تكلفة بضاعة تجزئة).`);
+}
+
+// توحيد معنى كود الضريبة 2230 ليكون دائمًا "ضريبة الخصم والإضافة
+// المستحقة" في كل الدول. قبل هذا التغيير كان 2230 يحمل معاني متضاربة:
+// زكاة مستحقة في الدليل السعودي، وضريبة الخصم والإضافة في الدليل المصري،
+// وضريبة الصادرات بمعدل صفر في الدليل الإماراتي. قيود قواعد البيانات
+// القديمة التي كانت مرحّلة على 2230 بمعنى الزكاة (sa) أو الصادرات (ae)
+// تُنقل إلى الأكواد الجديدة المخصصة لها (2240 زكاة / 2250 صادرات). قيود
+// الخصم والإضافة (eg) تبقى على 2230 لأنها أصبحت المعنى الموحد الصحيح.
+// أخيرًا يُوحَّد اسم حساب 2230 نفسه، وإلا لتُرحِّل شاشة الشراء خصمها على
+// حساب لا يزال موسومًا بمعنى قديم. تُنفذ مرة واحدة وتُنشأ الحسابات الهدف
+// إن لم تكن موجودة.
+function migrateZakatAndExportsOffWithholdingCode(db) {
+  const { ensureAccount } = require('../utils/journal');
+
+  const sourceAccount = db.prepare("SELECT id, name FROM chart_of_accounts WHERE code = '2230' AND is_deleted = 0").get();
+  if (!sourceAccount) return;
+
+  const UNIFIED_NAME = 'ضريبة الخصم والإضافة المستحقة';
+  const name = sourceAccount.name || '';
+  if (name === UNIFIED_NAME) return;
+
+  // اسم حساب 2230 الحالي هو الذي يحدد معناه السابق وبالتالي وجهة الترحيل.
+  const isZakat = name.includes('زكاة');
+  const isExports = name.includes('صادرات') || name.includes('معدل صفر');
+
+  let relocated = true;
+  if (isZakat || isExports) {
+    // زكاة مستحقة → 2240 ؛ ضريبة الصادرات (معدل صفر) → 2250
+    const targetCode = isZakat ? '2240' : '2250';
+    const targetName = isZakat ? 'زكاة مستحقة' : 'ضريبة القيمة المضافة على الصادرات (معدل صفر)';
+    const pending = db.prepare('SELECT COUNT(*) AS total FROM journal_entry_lines WHERE account_id = ?').get(sourceAccount.id).total;
+    if (pending > 0) {
+      const targetAccount = ensureAccount(db, targetCode, targetName, 'liability', '2200');
+      if (targetAccount && targetAccount !== sourceAccount.id) {
+        db.prepare('UPDATE journal_entry_lines SET account_id = ? WHERE account_id = ?').run(targetAccount, sourceAccount.id);
+        console.log(`Migrated ${pending} journal line(s) from account 2230 (${name}) to ${targetCode} (${targetName}).`);
+      } else {
+        relocated = false;
+      }
+    }
+  }
+
+  // بعد تأمين ترحيل القيود (أو عدم وجودها)، يُوحَّد اسم 2230 على المعنى
+  // الموحد. لو فشل إنشاء الحساب الهدف نؤجل التسمية حتى لا تختلط قيود
+  // الزكاة/الصادرات مع حساب موسوم بمعنى الخصم والإضافة.
+  if (relocated) {
+    db.prepare('UPDATE chart_of_accounts SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(UNIFIED_NAME, sourceAccount.id);
+    console.log(`Renamed account 2230 from "${name}" to "${UNIFIED_NAME}".`);
+  }
 }
 
 // القيود المحاسبية ضرورية لتقارير ميزان المراجعة وقائمة الدخل والميزانية

@@ -24,6 +24,7 @@
   { "code": "1510", "name_ar": "المصروفات المدفوعة مقدماً", "name_en": "Prepaid Expenses", "account_type": "asset", "parent_code": "1500" },
   { "code": "1520", "name_ar": "الإيرادات المستحقة", "name_en": "Accrued Revenues", "account_type": "asset", "parent_code": "1500" },
   { "code": "1530", "name_ar": "ضريبة القيمة المضافة القابلة للاسترداد (المدخلات)", "name_en": "VAT Recoverable (Input Tax)", "account_type": "asset", "parent_code": "1500" },
+  { "code": "2220", "name_ar": "ضريبة مدخلات غير قابلة للاسترداد", "name_en": "Non-Refundable Input Tax", "account_type": "asset", "parent_code": "1500" },
 
   { "code": "2000", "name_ar": "الخصوم", "name_en": "Liabilities", "account_type": "liability", "parent_code": null },
   { "code": "2100", "name_ar": "الموردون والذمم الدائنة", "name_en": "Accounts Payable", "account_type": "liability", "parent_code": "2000" },
@@ -31,8 +32,8 @@
   { "code": "2120", "name_ar": "أوراق الدفع", "name_en": "Notes Payable", "account_type": "liability", "parent_code": "2100" },
   { "code": "2200", "name_ar": "الضرائب المستحقة", "name_en": "Taxes Payable", "account_type": "liability", "parent_code": "2000" },
   { "code": "2210", "name_ar": "ضريبة القيمة المضافة المستحقة (المخرجات)", "name_en": "VAT Payable (Output Tax)", "account_type": "liability", "parent_code": "2200" },
-  { "code": "2220", "name_ar": "ضريبة القيمة المضافة على المشتريات (المدخلات)", "name_en": "VAT on Purchases (Input Tax)", "account_type": "liability", "parent_code": "2200" },
-  { "code": "2230", "name_ar": "ضريبة القيمة المضافة على الصادرات (معدل صفر)", "name_en": "VAT on Exports (Zero-rated)", "account_type": "liability", "parent_code": "2200" },
+  { "code": "2230", "name_ar": "ضريبة الخصم والإضافة المستحقة", "name_en": "Withholding Tax Payable", "account_type": "liability", "parent_code": "2200" },
+  { "code": "2250", "name_ar": "ضريبة القيمة المضافة على الصادرات (معدل صفر)", "name_en": "VAT on Exports (Zero-rated)", "account_type": "liability", "parent_code": "2200" },
   { "code": "2300", "name_ar": "القروض قصيرة الأجل", "name_en": "Short-term Loans", "account_type": "liability", "parent_code": "2000" },
   { "code": "2400", "name_ar": "مستحقات الرواتب والأجور", "name_en": "Accrued Salaries", "account_type": "liability", "parent_code": "2000" },
   { "code": "2500", "name_ar": "مستحقات أخرى", "name_en": "Other Payables", "account_type": "liability", "parent_code": "2000" },
